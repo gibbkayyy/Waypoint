@@ -1662,7 +1662,7 @@ async function sendToMAX(message) {
 
               if (payload.reply) {
                 fullText = payload.reply;
-                displayMAX(fullText);
+                displayMAX(payload.reply);
               }
 
               if (payload.error) {
@@ -1682,8 +1682,19 @@ async function sendToMAX(message) {
         Some servers send plain text rather than SSE.
       */
       if (!fullText && buffer.trim()) {
-        displayMAX(buffer.trim());
-        fullText = buffer.trim();
+        let fallbackText = buffer.trim();
+
+        // If a JSON response slipped through the streaming path,
+        // show only MAX's reply, never the wrapper object.
+        try {
+          const parsed = JSON.parse(fallbackText);
+          if (parsed.reply) {
+            fallbackText = parsed.reply;
+          }
+        } catch {}
+
+        displayMAX(fallbackText);
+        fullText = fallbackText;
       }
 
       if (!fullText) {
@@ -2091,8 +2102,10 @@ function handleVoiceCommand(text) {
 
   /*
     Everything else goes to MAX.
+
+    Do NOT navigate to the MAX page for voice commands.
+    MAX can respond from the current Waypoint page.
   */
-  openPage("max");
   sendToMAX(command);
 }
 
