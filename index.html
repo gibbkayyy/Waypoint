@@ -2236,11 +2236,9 @@ function setupVoice() {
 function pauseVoiceForMAX() {
   state.voiceSuppressed = true;
 
-  if (state.recognition) {
-    try {
-      state.recognition.stop();
-    } catch {}
-  }
+  // Stop the real microphone stream, not a browser SpeechRecognition
+  // service.
+  closeLiveVoice();
 
   if (state.voiceActive) {
     $("voiceStatusCard").textContent = "MAX responding";
@@ -2257,14 +2255,7 @@ function resumeVoiceAfterMAX() {
     return;
   }
 
-  $("voiceStatusCard").textContent = "Listening";
-  $("sysRecognition").textContent = "Active";
-  setMaxState("listening", "Listening");
-  setMAXStatus("Listening, Sir.");
-
-  try {
-    state.recognition.start();
-  } catch {}
+  startVoice();
 }
 
 function startVoice() {
