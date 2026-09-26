@@ -1,7 +1,28 @@
 import { Buffer } from "node:buffer";
 
 const MODEL = "gemini-3.8-flash-lite-tts";
-const VOICE = "Orus";
+
+async function getMaleBritishVoice(apiKey) {
+  const params = new URLSearchParams();
+  params.append("language_code", "en-GB");
+  params.append("gender", "male");
+  params.append("accent", "British");
+  params.append("page_size", "20");
+
+  const response = await fetch(
+    "https://generativelanguage.googleapis.com/v1beta/voices?" + params.toString(),
+    {
+      headers: { "x-goog-api-key": apiKey }
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("Gemini Voices API request failed.");
+  }
+
+  const data = await response.json();
+  return data?.voices?.[0]?.id || data?.voices?.[0]?.name || null;
+}
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -25,6 +46,11 @@ export default async function handler(req, res) {
   }
 
   try {
+    const voice = await getMaleBritishVoice(apiKey);
+    if (!voice) {
+      return res.status(502).json({ error: "No male British Gemini voice is available." });
+    }
+
     const response = await fetch(
       "https://generativelanguage.googleapis.com/v1beta/models/" + MODEL + ":generateContent",
       {
@@ -41,7 +67,7 @@ export default async function handler(req, res) {
                 {
                   text,
                   speech_metadata: {
-                    style: "calm, professional, confident male AI assistant with a natural British English delivery; clear and concise, not theatrical"
+                    style: "calm, professional, confident male AI assistant with natural British English delivery; clear, controlled and not theatrical"
                   }
                 }
               ]
@@ -51,7 +77,7 @@ export default async function handler(req, res) {
             responseModalities: ["AUDIO"],
             speechConfig: {
               prebuiltVoiceConfig: {
-                voiceName: VOICE
+                voiceName: voice
               }
             }
           }
