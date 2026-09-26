@@ -1913,6 +1913,46 @@ async function sendToMAX(message) {
    MAX SPEECH
 ========================================================= */
 
+function getMAXMaleVoice() {
+  const voices = window.speechSynthesis.getVoices();
+
+  // Prefer explicit male English voices. Android/Chrome commonly exposes
+  // "Google UK English Male"; other devices may expose a named male voice.
+  const exact = [
+    "Google UK English Male",
+    "Google US English Male",
+    "Microsoft Ryan Online (Natural) - English (United Kingdom)",
+    "Microsoft George Online (Natural) - English (United Kingdom)",
+    "Microsoft Guy Online (Natural) - English (United States)",
+    "Daniel",
+    "George",
+    "Ryan",
+    "Oliver"
+  ];
+
+  for (const name of exact) {
+    const voice = voices.find(v => v.name === name && /^en/i.test(v.lang));
+    if (voice) return voice;
+  }
+
+  // Then look for explicit male markers in the voice name.
+  const maleNamed = voices.find(v =>
+    /^en(-|_)/i.test(v.lang) &&
+    /male|man|guy|ryan|daniel|george|oliver/i.test(v.name) &&
+    !/female|woman/i.test(v.name)
+  );
+  if (maleNamed) return maleNamed;
+
+  // If the browser exposes a gender field, use it where available.
+  const genderMale = voices.find(v =>
+    /^en(-|_)/i.test(v.lang) &&
+    String(v.gender || "").toLowerCase() === "male"
+  );
+  if (genderMale) return genderMale;
+
+  return null;
+}
+
 function speakMAX(text) {
   if (!("speechSynthesis" in window)) {
     resumeVoiceAfterMAX();
@@ -1922,40 +1962,31 @@ function speakMAX(text) {
   window.speechSynthesis.cancel();
 
   const utterance = new SpeechSynthesisUtterance(text);
-
-  utterance.rate = 1;
-  utterance.pitch = 0.9;
+  utterance.lang = "en-GB";
+  utterance.rate = 0.98;
+  utterance.pitch = 0.78;
   utterance.volume = 1;
 
-  /*
-    Prefer English voices that are commonly male-sounding.
-
-    The browser/device controls which voices actually exist,
-    so this cannot guarantee a specific male voice.
-  */
-  const voices = window.speechSynthesis.getVoices();
-
-  const preferred =
-    voices.find(v =>
-      /en-GB/i.test(v.lang) &&
-      /male|daniel|george|oliver|ryan/i.test(v.name)
-    ) ||
-    voices.find(v =>
-      /en-GB/i.test(v.lang)
-    ) ||
-    voices.find(v =>
-      /^en/i.test(v.lang)
-    );
-
+  const preferred = getMAXMaleVoice();
   if (preferred) {
     utterance.voice = preferred;
+  } else {
+    console.warn("MAX male voice is not available on this device. Using the system English voice.");
   }
 
   utterance.onstart = () => {
     state.speaking = true;
-
     setMaxState("speaking", "Speaking");
     setMAXStatus("Speaking, Sir.");
+  };
+
+  utterance.onerror = event => {
+    console.warn("MAX speech synthesis:", event.error);
+    state.speaking = false;
+
+    if (state.voiceActive) {
+      resumeVoiceAfterMAX();
+    }
   };
 
   utterance.onend = () => {
