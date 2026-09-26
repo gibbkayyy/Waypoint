@@ -1,28 +1,7 @@
 import { Buffer } from "node:buffer";
 
-const MODEL = "gemini-3.8-flash-lite-tts";
-
-async function getMaleBritishVoice(apiKey) {
-  const params = new URLSearchParams();
-  params.append("language_code", "en-GB");
-  params.append("gender", "male");
-  params.append("accent", "British");
-  params.append("page_size", "20");
-
-  const response = await fetch(
-    "https://generativelanguage.googleapis.com/v1beta/voices?" + params.toString(),
-    {
-      headers: { "x-goog-api-key": apiKey }
-    }
-  );
-
-  if (!response.ok) {
-    throw new Error("Gemini Voices API request failed.");
-  }
-
-  const data = await response.json();
-  return data?.voices?.[0]?.id || data?.voices?.[0]?.name || null;
-}
+const MODEL = "gemini-3.8-flash-tts";
+const VOICE = "Kore";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -31,28 +10,34 @@ export default async function handler(req, res) {
   }
 
   const apiKey = process.env.GEMINI_API_KEY;
+
   if (!apiKey) {
-    return res.status(500).json({ error: "GEMINI_API_KEY is not configured." });
+    return res.status(500).json({
+      error: "GEMINI_API_KEY is not configured."
+    });
   }
 
-  const text = typeof req.body?.text === "string" ? req.body.text.trim() : "";
+  const text = typeof req.body?.text === "string"
+    ? req.body.text.trim()
+    : "";
 
   if (!text) {
-    return res.status(400).json({ error: "Speech text is required." });
+    return res.status(400).json({
+      error: "Speech text is required."
+    });
   }
 
   if (text.length > 8000) {
-    return res.status(400).json({ error: "Speech text is too long." });
+    return res.status(400).json({
+      error: "Speech text is too long."
+    });
   }
 
   try {
-    const voice = await getMaleBritishVoice(apiKey);
-    if (!voice) {
-      return res.status(502).json({ error: "No male British Gemini voice is available." });
-    }
-
     const response = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/models/" + MODEL + ":generateContent",
+      "https://generativelanguage.googleapis.com/v1beta/models/" +
+      MODEL +
+      ":generateContent",
       {
         method: "POST",
         headers: {
@@ -76,8 +61,8 @@ export default async function handler(req, res) {
           generationConfig: {
             responseModalities: ["AUDIO"],
             speechConfig: {
-              prebuiltVoiceConfig: {
-                voiceName: voice
+              voiceConfig: {
+                voice: VOICE
               }
             }
           }
@@ -94,23 +79,31 @@ export default async function handler(req, res) {
       });
     }
 
-    const audioBase64 = data?.candidates?.[0]?.content?.parts?.find(
-      part => part?.inlineData?.data
-    )?.inlineData?.data;
+    const audioBase64 =
+      data?.candidates?.[0]?.content?.parts?.find(
+        part => part?.inlineData?.data
+      )?.inlineData?.data;
 
     if (!audioBase64) {
       console.error("GEMINI TTS: no audio returned", data);
-      return res.status(502).json({ error: "Gemini TTS returned no audio." });
+      return res.status(502).json({
+        error: "Gemini TTS returned no audio."
+      });
     }
 
+    // Unary Gemini 3.8 TTS returns a complete WAV file.
     const audio = Buffer.from(audioBase64, "base64");
 
     res.setHeader("Content-Type", "audio/wav");
     res.setHeader("Cache-Control", "no-store");
     res.setHeader("Content-Length", String(audio.length));
+
     return res.status(200).send(audio);
   } catch (error) {
     console.error("TTS:", error);
-    return res.status(500).json({ error: "MAX speech generation failed." });
+
+    return res.status(500).json({
+      error: error?.message || "MAX speech generation failed."
+    });
   }
 }
