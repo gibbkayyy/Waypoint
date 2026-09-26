@@ -2081,25 +2081,22 @@ async function speakMAX(text) {
 ========================================================= */
 
 function pauseVoiceForMAX() {
-  state.voiceSuppressed = true;
-  closeLiveVoice();
+  state.voiceSuppressed = false;
 
   if (state.voiceActive) {
-    $("voiceStatusCard").textContent = "MAX responding";
-    $("sysRecognition").textContent = "Paused for MAX";
-    setMaxState("speaking", "MAX speaking");
-    setMAXStatus("MAX is responding, Sir.");
+    $("voiceStatusCard").textContent = "Listening";
+    $("sysRecognition").textContent = "Live";
+    setMaxState("listening", "Listening");
+    setMAXStatus("MAX is responding, Sir. Listening remains active.");
   }
 }
 
 function resumeVoiceAfterMAX() {
   state.voiceSuppressed = false;
 
-  if (!state.voiceActive || state.processingMAX || state.speaking) {
-    return;
+  if (state.voiceActive && !liveVoice.active) {
+    startVoice();
   }
-
-  startVoice();
 }
 
 function normalizeVoiceText(text) {
@@ -2187,9 +2184,15 @@ function downsampleTo16k(input, inputSampleRate) {
 }
 
 function setVoiceInput(text) {
+  const next = String(text || "").trim();
+
+  if (maxInput.value === next && state.voiceLastRenderedText === next) {
+    return;
+  }
+
   state.voiceProgrammaticInput = true;
-  maxInput.value = text;
-  state.voiceLastRenderedText = text;
+  maxInput.value = next;
+  state.voiceLastRenderedText = next;
   state.voiceProgrammaticInput = false;
 }
 
@@ -2335,8 +2338,23 @@ async function setupLiveVoice() {
       }
 
       if (final) {
-        liveVoice.finalText +=
-          (liveVoice.finalText ? " " : "") + final.trim();
+        const nextFinal = final.trim();
+        const currentFinal = liveVoice.finalText.trim();
+
+        if (nextFinal) {
+          if (!currentFinal) {
+            liveVoice.finalText = nextFinal;
+          } else if (
+            nextFinal === currentFinal ||
+            nextFinal.startsWith(currentFinal + " ")
+          ) {
+            // Gemini may send a later final transcription containing
+            // text that was already finalized. Replace instead of append.
+            liveVoice.finalText = nextFinal;
+          } else if (!currentFinal.endsWith(" " + nextFinal)) {
+            liveVoice.finalText += " " + nextFinal;
+          }
+        }
 
         liveVoice.interimText = "";
 
