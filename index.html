@@ -1397,11 +1397,35 @@ const voiceButton = $("voiceButton");
 ========================================================= */
 
 async function bootWaypoint() {
-  // The boot screen is a real startup gate. Nothing behind it is revealed
-  // until authentication and all required initial data/UI setup are ready.
+  // Returning users get the shell immediately. Authentication is verified
+  // in the background so a slow/cold serverless function cannot hold the UI.
   boot.style.display = "flex";
   boot.style.opacity = "1";
-  bootStatus.textContent = "Checking authentication...";
+  bootStatus.textContent = "Starting Waypoint...";
+
+  const knownAuthenticated = localStorage.getItem("waypoint_authenticated") === "1";
+
+  if (knownAuthenticated) {
+    enterApp();
+    initialiseSystem().catch(error => {
+      console.error("WAYPOINT INIT:", error);
+      setMAXStatus("Some background systems are still loading, Sir.");
+    });
+
+    fetch("/api/auth/session", { cache: "no-store" })
+      .then(response => response.json())
+      .then(data => {
+        if (!data.authenticated) {
+          localStorage.removeItem("waypoint_authenticated");
+          location.reload();
+        }
+      })
+      .catch(error => {
+        console.warn("AUTH VERIFY:", error);
+      });
+
+    return;
+  }
 
   try {
     const response = await fetch("/api/auth/session", {
@@ -1411,9 +1435,7 @@ async function bootWaypoint() {
     const data = await response.json();
 
     if (data.authenticated) {
-      // Authentication is the only thing that blocks the UI.
-      // The rest of Waypoint can initialize in the background.
-      bootStatus.textContent = "Starting Waypoint...";
+      localStorage.setItem("waypoint_authenticated", "1");
       enterApp();
       initialiseSystem().catch(error => {
         console.error("WAYPOINT INIT:", error);
@@ -1431,14 +1453,14 @@ async function bootWaypoint() {
 }
 
 function showLogin() {
-  // Only the completed login transition can remove the boot screen.
+  // Fade quickly so the boot screen never feels like a second loading stage.
   boot.style.opacity = "0";
 
   setTimeout(() => {
     boot.style.display = "none";
     loginScreen.style.display = "flex";
     app.style.display = "none";
-  }, 350);
+  }, 120);
 }
 
 function enterApp() {
@@ -1483,7 +1505,12 @@ loginForm.addEventListener("submit", async event => {
       throw new Error(data.error || "Authentication failed.");
     }
 
+    localStorage.setItem("waypoint_authenticated", "1");
     enterApp();
+    initialiseSystem().catch(error => {
+      console.error("WAYPOINT INIT:", error);
+      setMAXStatus("Some background systems are still loading, Sir.");
+    });
 
   } catch (error) {
     loginError.textContent = error.message;
