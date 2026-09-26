@@ -1339,6 +1339,7 @@ const state = {
   voiceSendTimer: null,
   lastVoiceSentNormalized: "",
   lastVoiceSentAt: 0,
+  processedVoiceResultIndexes: new Set(),
 
   speaking: false,
   processingMAX: false,
@@ -2054,6 +2055,7 @@ function setupVoice() {
     state.voiceActive = true;
     state.voiceSessionText = "";
     state.voiceCommittedText = "";
+    state.processedVoiceResultIndexes.clear();
 
     voiceButton.classList.add("active");
     $("voiceStatusCard").textContent = "Listening";
@@ -2080,10 +2082,15 @@ function setupVoice() {
       if (!transcript) continue;
 
       if (result.isFinal) {
-        state.voiceCommittedText = [
-          state.voiceCommittedText,
-          transcript
-        ].filter(Boolean).join(" ");
+        // Chrome/Android can send the same final result again with a
+        // later event.resultIndex. Commit each result index exactly once.
+        if (!state.processedVoiceResultIndexes.has(i)) {
+          state.processedVoiceResultIndexes.add(i);
+          state.voiceCommittedText = [
+            state.voiceCommittedText,
+            transcript
+          ].filter(Boolean).join(" ");
+        }
       } else {
         latestInterim = transcript;
       }
@@ -2128,7 +2135,7 @@ function setupVoice() {
         state.voiceSendTimer = null;
 
         sendToMAX(message);
-      }, 1100);
+      }, 650);
     }
   };
 
