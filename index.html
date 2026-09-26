@@ -1397,58 +1397,38 @@ const voiceButton = $("voiceButton");
 ========================================================= */
 
 async function bootWaypoint() {
-  // Returning users get the shell immediately. Authentication is verified
-  // in the background so a slow/cold serverless function cannot hold the UI.
-  boot.style.display = "flex";
-  boot.style.opacity = "1";
-  bootStatus.textContent = "Starting Waypoint...";
+  // Never make the visual shell wait on a serverless request.
+  // Authentication is verified after Waypoint is already visible.
+  boot.style.display = "none";
+  loginScreen.style.display = "none";
+  app.style.display = "block";
 
-  const knownAuthenticated = localStorage.getItem("waypoint_authenticated") === "1";
-
-  if (knownAuthenticated) {
-    enterApp();
-    initialiseSystem().catch(error => {
-      console.error("WAYPOINT INIT:", error);
-      setMAXStatus("Some background systems are still loading, Sir.");
-    });
-
-    fetch("/api/auth/session", { cache: "no-store" })
-      .then(response => response.json())
-      .then(data => {
-        if (!data.authenticated) {
-          localStorage.removeItem("waypoint_authenticated");
-          location.reload();
-        }
-      })
-      .catch(error => {
-        console.warn("AUTH VERIFY:", error);
-      });
-
-    return;
-  }
+  initialiseSystem().catch(error => {
+    console.error("WAYPOINT INIT:", error);
+    setMAXStatus("Some background systems are still loading, Sir.");
+  });
 
   try {
     const response = await fetch("/api/auth/session", {
       cache: "no-store"
     });
-
     const data = await response.json();
 
     if (data.authenticated) {
       localStorage.setItem("waypoint_authenticated", "1");
-      enterApp();
-      initialiseSystem().catch(error => {
-        console.error("WAYPOINT INIT:", error);
-        setMAXStatus("Some background systems are still loading, Sir.");
-      });
-    } else {
-      bootStatus.textContent = "Ready.";
+      return;
+    }
+
+    localStorage.removeItem("waypoint_authenticated");
+    showLogin();
+  } catch (error) {
+    console.warn("AUTH VERIFY:", error);
+
+    // If this is a returning session, keep Waypoint usable during a
+    // temporary/cold backend response instead of trapping the user on boot.
+    if (localStorage.getItem("waypoint_authenticated") !== "1") {
       showLogin();
     }
-  } catch (error) {
-    console.error(error);
-    bootStatus.textContent = "Backend unavailable.";
-    showLogin();
   }
 }
 
@@ -1471,7 +1451,7 @@ function enterApp() {
     boot.style.display = "none";
     loginScreen.style.display = "none";
     app.style.display = "block";
-  }, 350);
+  }, 120);
 }
 
 
