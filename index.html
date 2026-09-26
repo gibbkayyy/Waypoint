@@ -946,7 +946,7 @@
   </div>
 
   <!-- LOGIN -->
-  <section id="loginScreen">
+  <section id="loginScreen" style="display:none">
     <div class="login-card">
       <h1>Welcome back, Sir.</h1>
       <p>Authenticate to access Waypoint.</p>
@@ -972,7 +972,7 @@
   </section>
 
   <!-- APP -->
-  <div id="app">
+  <div id="app" style="display:none">
     <div class="shell">
 
       <aside class="sidebar">
@@ -1386,6 +1386,10 @@ const voiceButton = $("voiceButton");
 ========================================================= */
 
 async function bootWaypoint() {
+  // The boot screen is a real startup gate. Nothing behind it is revealed
+  // until authentication and all required initial data/UI setup are ready.
+  boot.style.display = "flex";
+  boot.style.opacity = "1";
   bootStatus.textContent = "Checking authentication...";
 
   try {
@@ -1396,37 +1400,40 @@ async function bootWaypoint() {
     const data = await response.json();
 
     if (data.authenticated) {
+      bootStatus.textContent = "Loading Waypoint...";
+      await initialiseSystem();
       enterApp();
     } else {
+      bootStatus.textContent = "Ready.";
       showLogin();
     }
   } catch (error) {
     console.error(error);
-
     bootStatus.textContent = "Backend unavailable.";
-
-    setTimeout(() => {
-      showLogin();
-    }, 700);
+    showLogin();
   }
 }
 
 function showLogin() {
-  boot.style.display = "none";
-  loginScreen.style.display = "flex";
-  app.style.display = "none";
+  // Only the completed login transition can remove the boot screen.
+  boot.style.opacity = "0";
+
+  setTimeout(() => {
+    boot.style.display = "none";
+    loginScreen.style.display = "flex";
+    app.style.display = "none";
+  }, 350);
 }
 
 function enterApp() {
+  bootStatus.textContent = "Waypoint ready.";
   boot.style.opacity = "0";
 
   setTimeout(() => {
     boot.style.display = "none";
     loginScreen.style.display = "none";
     app.style.display = "block";
-
-    initialiseSystem();
-  }, 300);
+  }, 350);
 }
 
 
@@ -1472,7 +1479,7 @@ loginForm.addEventListener("submit", async event => {
    INITIALISE
 ========================================================= */
 
-async function initialiseSystem() {
+async async function initialiseSystem() {
   updateClock();
   setInterval(updateClock, 1000);
 
