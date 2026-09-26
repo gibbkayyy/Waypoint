@@ -57,8 +57,10 @@ async function callGemini(model, apiKey, message) {
         ],
 
         generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 2048
+          thinkingConfig: {
+            thinkingLevel: "low"
+          },
+          maxOutputTokens: 512
         }
       })
     }
@@ -143,8 +145,8 @@ export default async function handler(req, res) {
             status === 503 ||
             status === 504
           ) {
-            if (attempt === 0) {
-              await sleep(700);
+            if (attempt === 0 && status !== 503) {
+              await sleep(250);
               continue;
             }
 
@@ -160,7 +162,7 @@ export default async function handler(req, res) {
           lastError = error?.message || "Gemini request failed.";
 
           if (attempt === 0) {
-            await sleep(700);
+            await sleep(250);
             continue;
           }
 
