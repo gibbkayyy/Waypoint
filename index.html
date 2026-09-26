@@ -1209,6 +1209,7 @@ const state = {
   voiceActive: false,
   recognition: null,
   recognitionSupported: false,
+  voiceSuppressed: false,
 
   speaking: false,
   processingMAX: false,
@@ -1580,6 +1581,10 @@ async function sendToMAX(message) {
 
   state.processingMAX = true;
 
+  // Stop the microphone while MAX is processing/speaking.
+  // Keep voiceActive true so listening automatically resumes afterward.
+  pauseVoiceForMAX();
+
   setMaxState("thinking", "Thinking");
   setMAXStatus("Thinking, Sir.");
 
@@ -1723,17 +1728,13 @@ async function sendToMAX(message) {
   } finally {
     state.processingMAX = false;
 
-    if (!state.speaking) {
-      setMaxState(
-        state.voiceActive ? "listening" : "ready",
-        state.voiceActive ? "Listening" : "Ready"
-      );
-
-      if (state.voiceActive) {
-        setMAXStatus("Listening, Sir.");
-      } else {
-        setMAXStatus("Ready, Sir.");
-      }
+    // If speech synthesis is unavailable, there will be no
+    // onend event to resume the microphone.
+    if (!state.speaking && state.voiceActive) {
+      resumeVoiceAfterMAX();
+    } else if (!state.speaking) {
+      setMaxState("ready", "Ready");
+      setMAXStatus("Ready, Sir.");
     }
   }
 }
@@ -1745,6 +1746,7 @@ async function sendToMAX(message) {
 
 function speakMAX(text) {
   if (!("speechSynthesis" in window)) {
+    resumeVoiceAfterMAX();
     return;
   }
 
@@ -1791,8 +1793,7 @@ function speakMAX(text) {
     state.speaking = false;
 
     if (state.voiceActive) {
-      setMaxState("listening", "Listening");
-      setMAXStatus("Listening, Sir.");
+      resumeVoiceAfterMAX();
     } else {
       setMaxState("ready", "Ready");
       setMAXStatus("Ready, Sir.");
@@ -1857,6 +1858,11 @@ function setupVoice() {
   };
 
   recognition.onresult = event => {
+    // Ignore anything captured while MAX is processing/speaking.
+    if (state.voiceSuppressed || state.processingMAX || state.speaking) {
+      return;
+    }
+
     let finalText = "";
 
     for (
@@ -1908,9 +1914,11 @@ function setupVoice() {
 
       Restart automatically while Waypoint remains active.
     */
-    if (state.voiceActive) {
+    if (state.voiceActive && !state.voiceSuppressed && !state.processingMAX && !state.speaking) {
       setTimeout(() => {
-        if (!state.voiceActive) return;
+        if (!state.voiceActive || state.voiceSuppressed || state.processingMAX || state.speaking) {
+          return;
+        }
 
         try {
           recognition.start();
@@ -1918,6 +1926,40 @@ function setupVoice() {
       }, 250);
     }
   };
+}
+
+function pauseVoiceForMAX() {
+  state.voiceSuppressed = true;
+
+  if (state.recognition) {
+    try {
+      state.recognition.stop();
+    } catch {}
+  }
+
+  if (state.voiceActive) {
+    $("voiceStatusCard").textContent = "MAX responding";
+    $("sysRecognition").textContent = "Paused for MAX";
+    setMaxState("speaking", "MAX speaking");
+    setMAXStatus("MAX is responding, Sir.");
+  }
+}
+
+function resumeVoiceAfterMAX() {
+  state.voiceSuppressed = false;
+
+  if (!state.voiceActive || state.processingMAX || state.speaking) {
+    return;
+  }
+
+  $("voiceStatusCard").textContent = "Listening";
+  $("sysRecognition").textContent = "Active";
+  setMaxState("listening", "Listening");
+  setMAXStatus("Listening, Sir.");
+
+  try {
+    state.recognition.start();
+  } catch {}
 }
 
 function startVoice() {
@@ -1934,6 +1976,7 @@ function startVoice() {
 
 function stopVoice() {
   state.voiceActive = false;
+  state.voiceSuppressed = false;
 
   voiceButton.classList.remove("active");
 
