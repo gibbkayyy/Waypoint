@@ -2033,6 +2033,7 @@ function setupVoice() {
 
     let finalText = "";
     let interimText = "";
+    let committedVoiceText = maxInput.value.trim();
 
     for (
       let i = event.resultIndex;
@@ -2052,10 +2053,11 @@ function setupVoice() {
     }
 
     if (finalText.trim()) {
-      const existing = maxInput.value.trim();
-      maxInput.value = existing
-        ? existing + " " + finalText.trim()
+      committedVoiceText = committedVoiceText
+        ? committedVoiceText + " " + finalText.trim()
         : finalText.trim();
+
+      maxInput.value = committedVoiceText;
 
       clearTimeout(state.voiceSendTimer);
       state.voiceSendTimer = setTimeout(() => {
@@ -2071,12 +2073,10 @@ function setupVoice() {
     }
 
     if (interimText.trim()) {
-      const existing = maxInput.value.trim();
-      const preview = existing
-        ? existing + " " + interimText.trim()
+      maxInput.value = committedVoiceText
+        ? committedVoiceText + " " + interimText.trim()
         : interimText.trim();
 
-      maxInput.value = preview;
       clearTimeout(state.voiceSendTimer);
       state.voiceSendTimer = setTimeout(() => {
         if (!state.voiceActive || state.voiceSuppressed || state.processingMAX || state.speaking) {
