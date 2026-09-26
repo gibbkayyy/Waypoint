@@ -2024,16 +2024,15 @@ function setupVoice() {
   };
 
   recognition.onresult = event => {
-    // Voice control is dictation only.
-    // Never send individual recognition chunks. Keep typing into the
-    // MAX input until the user pauses, then auto-send the full sentence.
+    // Voice control is strictly dictation.
+    // It only types into the MAX input box.
+    // It NEVER sends the command automatically.
     if (state.voiceSuppressed || state.processingMAX || state.speaking) {
       return;
     }
 
-    let finalText = "";
+    let committedText = maxInput.value.trim();
     let interimText = "";
-    let committedVoiceText = maxInput.value.trim();
 
     for (
       let i = event.resultIndex;
@@ -2046,53 +2045,24 @@ function setupVoice() {
       if (!transcript) continue;
 
       if (event.results[i].isFinal) {
-        finalText += transcript + " ";
+        committedText = committedText
+          ? committedText + " " + transcript
+          : transcript;
       } else {
         interimText += transcript + " ";
       }
     }
 
-    if (finalText.trim()) {
-      committedVoiceText = committedVoiceText
-        ? committedVoiceText + " " + finalText.trim()
-        : finalText.trim();
+    const displayText = interimText.trim()
+      ? (committedText
+          ? committedText + " " + interimText.trim()
+          : interimText.trim())
+      : committedText;
 
-      maxInput.value = committedVoiceText;
-
-      clearTimeout(state.voiceSendTimer);
-      state.voiceSendTimer = setTimeout(() => {
-        if (!state.voiceActive || state.voiceSuppressed || state.processingMAX || state.speaking) {
-          return;
-        }
-
-        const command = maxInput.value.trim();
-        if (!command) return;
-
-        handleVoiceCommand(command);
-      }, 900);
-    }
-
-    if (interimText.trim()) {
-      maxInput.value = committedVoiceText
-        ? committedVoiceText + " " + interimText.trim()
-        : interimText.trim();
-
-      clearTimeout(state.voiceSendTimer);
-      state.voiceSendTimer = setTimeout(() => {
-        if (!state.voiceActive || state.voiceSuppressed || state.processingMAX || state.speaking) {
-          return;
-        }
-
-        const command = maxInput.value.trim();
-        if (!command) return;
-
-        handleVoiceCommand(command);
-      }, 1400);
-    }
-
-    if (finalText.trim() || interimText.trim()) {
+    if (displayText) {
+      maxInput.value = displayText;
       maxInput.focus();
-      setMAXStatus("Listening, Sir.");
+      setMAXStatus("Voice typing, Sir.");
     }
   };
 
