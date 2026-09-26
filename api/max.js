@@ -4,7 +4,8 @@ const MODELS = [
   "gemini-3.5-flash-lite"
 ];
 
-const SYSTEM_INSTRUCTION = `
+function getSystemInstruction(currentDateTime) {
+  return `
 You are MAX, the personal intelligence of Waypoint.
 
 You were made by Kai Gibb to help him with whatever he needs.
@@ -49,7 +50,7 @@ async function callGemini(model, apiKey, message) {
         system_instruction: {
           parts: [
             {
-              text: SYSTEM_INSTRUCTION
+              text: getSystemInstruction(currentDateTime)
             }
           ]
         },
