@@ -101,7 +101,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    await ensureSchema();
+    // Persistence is best-effort so MAX stays available during a database outage.\n    try {\n      await ensureSchema();\n    } catch (storageError) {\n      console.error("MAX storage unavailable:", storageError);\n    }
 
     const apiKey = process.env.GEMINI_API_KEY;
 
