@@ -2024,14 +2024,15 @@ function setupVoice() {
   };
 
   recognition.onresult = event => {
-    // Voice behaves like a microphone typing into the MAX command box.
-    // Interim words are shown live; the completed sentence is sent once.
+    // Voice control is dictation only.
+    // Never send individual recognition chunks. Keep typing into the
+    // MAX input until the user pauses, then auto-send the full sentence.
     if (state.voiceSuppressed || state.processingMAX || state.speaking) {
       return;
     }
 
-    let interimText = "";
     let finalText = "";
+    let interimText = "";
 
     for (
       let i = event.resultIndex;
@@ -2050,22 +2051,48 @@ function setupVoice() {
       }
     }
 
-    const liveText = finalText.trim() || interimText.trim();
+    if (finalText.trim()) {
+      const existing = maxInput.value.trim();
+      maxInput.value = existing
+        ? existing + " " + finalText.trim()
+        : finalText.trim();
 
-    if (liveText) {
-      maxInput.value = liveText;
-      maxInput.focus();
-      setMAXStatus(
-        finalText.trim()
-          ? "Sending your command, Sir."
-          : "Listening to your command, Sir."
-      );
+      clearTimeout(state.voiceSendTimer);
+      state.voiceSendTimer = setTimeout(() => {
+        if (!state.voiceActive || state.voiceSuppressed || state.processingMAX || state.speaking) {
+          return;
+        }
+
+        const command = maxInput.value.trim();
+        if (!command) return;
+
+        handleVoiceCommand(command);
+      }, 900);
     }
 
-    if (finalText.trim()) {
-      const command = finalText.trim();
-      maxInput.value = command;
-      handleVoiceCommand(command);
+    if (interimText.trim()) {
+      const existing = maxInput.value.trim();
+      const preview = existing
+        ? existing + " " + interimText.trim()
+        : interimText.trim();
+
+      maxInput.value = preview;
+      clearTimeout(state.voiceSendTimer);
+      state.voiceSendTimer = setTimeout(() => {
+        if (!state.voiceActive || state.voiceSuppressed || state.processingMAX || state.speaking) {
+          return;
+        }
+
+        const command = maxInput.value.trim();
+        if (!command) return;
+
+        handleVoiceCommand(command);
+      }, 1400);
+    }
+
+    if (finalText.trim() || interimText.trim()) {
+      maxInput.focus();
+      setMAXStatus("Listening, Sir.");
     }
   };
 
