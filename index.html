@@ -1577,6 +1577,19 @@ function setupMAX() {
 */
 
 async function sendToMAX(message) {
+  const normalizedMessage = message.toLowerCase().trim();
+
+  if (
+    normalizedMessage === "news" ||
+    normalizedMessage === "latest news" ||
+    normalizedMessage === "show me the news" ||
+    normalizedMessage === "what's in the news" ||
+    normalizedMessage === "what is in the news"
+  ) {
+    await showLatestNews();
+    return;
+  }
+
   if (state.processingMAX) return;
 
   state.processingMAX = true;
@@ -2019,6 +2032,47 @@ function toggleVoice() {
    VOICE COMMAND PARSER
 ========================================================= */
 
+async function showLatestNews() {
+  setMaxState("thinking", "Fetching news");
+  setMAXStatus("Fetching the latest news, Sir.");
+
+  try {
+    const response = await fetch("/api/news", {
+      cache: "no-store"
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || !Array.isArray(data.articles) || !data.articles.length) {
+      throw new Error(data.error || "No news available.");
+    }
+
+    const headlines = data.articles.slice(0, 8);
+
+    displayMAX(
+      "LATEST NEWS\\n\\n" +
+      headlines
+        .map((article, index) => `${index + 1}. ${article.title}`)
+        .join("\\n")
+    );
+
+    state.lastMAXText = headlines
+      .map((article, index) => `${index + 1}. ${article.title}`)
+      .join(" ");
+
+    setMaxState("ready", "News ready");
+    setMAXStatus("Latest news displayed, Sir.");
+
+    return true;
+  } catch (error) {
+    console.error("NEWS:", error);
+    displayMAX("I couldn't load the latest news right now.");
+    setMaxState("error", "News error");
+    setMAXStatus("I couldn't reach the news feed, Sir.");
+    return true;
+  }
+}
+
 async function handleFastVoiceCommand(command) {
   const lower = command.toLowerCase().trim();
 
@@ -2058,40 +2112,7 @@ async function handleFastVoiceCommand(command) {
     lower === "latest news" ||
     lower === "what's happening"
   ) {
-    setMaxState("thinking", "Fetching news");
-    setMAXStatus("Fetching the latest news, Sir.");
-
-    try {
-      const response = await fetch("/api/news", {
-        cache: "no-store"
-      });
-
-      const data = await response.json();
-
-      if (!response.ok || !Array.isArray(data.articles) || !data.articles.length) {
-        throw new Error(data.error || "No news available.");
-      }
-
-      const headlines = data.articles.slice(0, 5);
-      const spoken = headlines
-        .map((article, index) => `${index + 1}. ${article.title}`)
-        .join(" ");
-
-      displayMAX(headlines.map((article, index) =>
-        `${index + 1}. ${article.title}`
-      ).join("\n"));
-
-      state.lastMAXText = spoken;
-      setMaxState("speaking", "Speaking");
-      setMAXStatus("Reading the latest news, Sir.");
-      speakMAX(spoken);
-
-      return true;
-    } catch (error) {
-      console.error("NEWS:", error);
-      setMAXStatus("I couldn't reach the news feed, Sir.");
-      return true;
-    }
+    return showLatestNews();
   }
 
   return false;
