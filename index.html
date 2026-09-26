@@ -2019,6 +2019,84 @@ function toggleVoice() {
    VOICE COMMAND PARSER
 ========================================================= */
 
+async function handleFastVoiceCommand(command) {
+  const lower = command.toLowerCase().trim();
+
+  // Instant music controls.
+  if (
+    lower === "play music" ||
+    lower === "open music" ||
+    lower === "start music"
+  ) {
+    window.open("https://music.youtube.com", "_blank", "noopener,noreferrer");
+    setMAXStatus("Opening music, Sir.");
+    return true;
+  }
+
+  const playMatch = lower.match(/^(?:play|find) (.+)$/i);
+
+  if (playMatch && playMatch[1] && !/news|music news/i.test(playMatch[1])) {
+    const query = playMatch[1].trim();
+
+    if (query.length >= 2) {
+      window.open(
+        "https://music.youtube.com/search?q=" + encodeURIComponent(query),
+        "_blank",
+        "noopener,noreferrer"
+      );
+
+      setMAXStatus(`Searching music for "${query}", Sir.`);
+      return true;
+    }
+  }
+
+  if (
+    lower === "news" ||
+    lower === "show me the news" ||
+    lower === "what's in the news" ||
+    lower === "what is in the news" ||
+    lower === "latest news" ||
+    lower === "what's happening"
+  ) {
+    setMaxState("thinking", "Fetching news");
+    setMAXStatus("Fetching the latest news, Sir.");
+
+    try {
+      const response = await fetch("/api/news", {
+        cache: "no-store"
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !Array.isArray(data.articles) || !data.articles.length) {
+        throw new Error(data.error || "No news available.");
+      }
+
+      const headlines = data.articles.slice(0, 5);
+      const spoken = headlines
+        .map((article, index) => `${index + 1}. ${article.title}`)
+        .join(" ");
+
+      displayMAX(headlines.map((article, index) =>
+        `${index + 1}. ${article.title}`
+      ).join("\n"));
+
+      state.lastMAXText = spoken;
+      setMaxState("speaking", "Speaking");
+      setMAXStatus("Reading the latest news, Sir.");
+      speakMAX(spoken);
+
+      return true;
+    } catch (error) {
+      console.error("NEWS:", error);
+      setMAXStatus("I couldn't reach the news feed, Sir.");
+      return true;
+    }
+  }
+
+  return false;
+}
+
 function handleVoiceCommand(text) {
   const lower = text.toLowerCase().trim();
 
@@ -2052,6 +2130,18 @@ function handleVoiceCommand(text) {
     return;
   }
 
+  /*
+    Fast local commands first.
+    These never wait for Gemini.
+  */
+  handleFastVoiceCommand(command).then(handled => {
+    if (handled) return;
+    handleVoiceCommandAI(command);
+  });
+  return;
+}
+
+function handleVoiceCommandAI(command) {
   /*
     Local Waypoint commands.
   */
