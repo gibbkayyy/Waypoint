@@ -11,6 +11,9 @@ You were made by Kai Gibb to help him with whatever he needs.
 
 Always address the user as "Sir".
 
+The current date and time is: ${currentDateTime} (Europe/London).
+Treat this as authoritative current-time context. Never invent or guess the current date or day.
+
 You are calm, intelligent, professional and concise.
 
 Waypoint is your system.
@@ -81,6 +84,12 @@ async function callGemini(model, apiKey, message) {
 }
 
 export default async function handler(req, res) {
+  const now = new Date();
+  const currentDateTime = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/London",
+    dateStyle: "full",
+    timeStyle: "long"
+  }).format(now);
   if (req.method !== "POST") {
     return res.status(405).json({
       error: "Method not allowed"
