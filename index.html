@@ -1444,14 +1444,10 @@ function showLogin() {
 }
 
 function enterApp() {
-  bootStatus.textContent = "Waypoint ready.";
+  boot.style.display = "none";
   boot.style.opacity = "0";
-
-  setTimeout(() => {
-    boot.style.display = "none";
-    loginScreen.style.display = "none";
-    app.style.display = "block";
-  }, 120);
+  loginScreen.style.display = "none";
+  app.style.display = "block";
 }
 
 
@@ -1529,18 +1525,10 @@ setupMAX();
     loadActivity()
   ]).catch(console.error);
 
-  /*
-    Start voice after the system is ready.
-
-    Browser security policies may require the first microphone
-    permission to come from a user gesture. Once permission is
-    granted, recognition will continuously restart while the
-    page is active.
-  */
-  startVoice();
-
-  setMaxState("listening", "Listening");
-  setMAXStatus("Listening, Sir.");
+  // Do not open the microphone during boot. Voice starts only from
+  // the voice button or Ctrl + Space, after the UI has painted.
+  setMaxState("ready", "Ready");
+  setMAXStatus("Ready, Sir.");
 }
 
 
