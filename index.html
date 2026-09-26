@@ -1714,7 +1714,21 @@ async function sendToMAX(message) {
     normalizedMessage === "what's in the news" ||
     normalizedMessage === "what is in the news"
   ) {
-    await showLatestNews();
+    await showNewsWidget();
+    return;
+  }
+
+  if (
+    /^(show )?(me )?(the )?time$|^what time is it$|^current time$/.test(normalizedMessage)
+  ) {
+    showTimeWidget();
+    return;
+  }
+
+  if (
+    /^(show )?(me )?(the )?weather$|^what'?s the weather$|^weather now$/.test(normalizedMessage)
+  ) {
+    await showWeatherWidget();
     return;
   }
 
