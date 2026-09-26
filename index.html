@@ -1335,7 +1335,10 @@ const state = {
   voiceSuppressed: false,
   voiceBaseText: "",
   voiceCommittedText: "",
+  voiceSessionText: "",
   voiceSendTimer: null,
+  lastVoiceSentNormalized: "",
+  lastVoiceSentAt: 0,
 
   speaking: false,
   processingMAX: false,
@@ -2050,6 +2053,7 @@ function setupVoice() {
   recognition.onstart = () => {
     state.voiceActive = true;
     state.voiceSessionText = "";
+    state.voiceCommittedText = "";
 
     voiceButton.classList.add("active");
     $("voiceStatusCard").textContent = "Listening";
@@ -2064,34 +2068,42 @@ function setupVoice() {
   recognition.onresult = event => {
     if (!state.voiceActive || state.voiceSuppressed || state.processingMAX || state.speaking) return;
 
-    let finalText = "";
     let latestInterim = "";
 
-    for (let i = 0; i < event.results.length; i++) {
+    // IMPORTANT:
+    // SpeechRecognition keeps old results in event.results.
+    // Only process indexes from event.resultIndex onward.
+    // Re-reading the whole array was causing duplicated messages.
+    for (let i = event.resultIndex; i < event.results.length; i++) {
       const result = event.results[i];
       const transcript = result[0]?.transcript?.trim() || "";
       if (!transcript) continue;
 
       if (result.isFinal) {
-        finalText += (finalText ? " " : "") + transcript;
-      } else if (i >= event.resultIndex) {
+        state.voiceCommittedText = [
+          state.voiceCommittedText,
+          transcript
+        ].filter(Boolean).join(" ");
+      } else {
         latestInterim = transcript;
       }
     }
 
-    const visibleText = (finalText || latestInterim).replace(/\s+/g, " ").trim();
+    const visibleText = [
+      state.voiceCommittedText,
+      latestInterim
+    ].filter(Boolean).join(" ").replace(/\s+/g, " ").trim();
 
     if (visibleText) {
       state.voiceSessionText = visibleText;
       maxInput.value = visibleText;
-      maxInput.focus();
       setMAXStatus("Listening, Sir.");
     }
 
-    if (finalText) {
+    if (state.voiceCommittedText) {
       clearTimeout(state.voiceSendTimer);
 
-      const message = finalText.replace(/\s+/g, " ").trim();
+      const message = state.voiceCommittedText.replace(/\s+/g, " ").trim();
 
       state.voiceSendTimer = setTimeout(() => {
         if (!state.voiceActive || state.voiceSuppressed || state.processingMAX || state.speaking) return;
@@ -2099,7 +2111,11 @@ function setupVoice() {
         const normalized = normalizeVoiceText(message);
         const now = Date.now();
 
-        if (normalized && normalized === state.lastVoiceSentNormalized && now - state.lastVoiceSentAt < 5000) {
+        if (
+          normalized &&
+          normalized === state.lastVoiceSentNormalized &&
+          now - state.lastVoiceSentAt < 5000
+        ) {
           return;
         }
 
@@ -2115,6 +2131,7 @@ function setupVoice() {
       }, 1100);
     }
   };
+
   recognition.onerror = event => {
     console.warn("Voice recognition:", event.error);
 
@@ -2131,9 +2148,8 @@ function setupVoice() {
   };
 
   recognition.onend = () => {
-    // A recognition run is disposable. We never carry its transcript into
-    // the next run, which prevents the classic "hello hello" reconnect bug.
-    state.voiceSessionText = "";
+    // Keep the committed text alive while the 1.1s pause timer is waiting.
+    // It is cleared only after the message is actually sent.
 
     if (state.voiceActive && !state.voiceSuppressed && !state.processingMAX && !state.speaking) {
       setTimeout(() => {
@@ -2192,7 +2208,7 @@ function startVoice() {
   clearTimeout(state.voiceSendTimer);
   state.voiceSendTimer = null;
   state.voiceBaseText = maxInput.value.trim();
-  state.voiceCommittedText = state.voiceBaseText;
+  state.voiceCommittedText = "";
   state.voiceSessionText = "";
 
   try {
