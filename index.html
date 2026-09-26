@@ -1277,24 +1277,8 @@
 ========================================================= */
 
 const state = {
-  currentPage: "overview",
-
-  voiceActive: false,
-  recognition: null,
-  recognitionSupported: false,
-  voiceSuppressed: false,
-  voiceBaseText: "",
-  voiceCommittedText: "",
-  voiceSessionText: "",
-  voiceSendTimer: null,
-  lastVoiceSentNormalized: "",
-  lastVoiceSentAt: 0,
-  processedVoiceResultIndexes: new Set(),
-  voiceProgrammaticInput: false,
-  voiceLastRenderedText: "",
-  voiceUserEdited: false,
-
-  speechQueue: [],
+  currentPage: "overview",recognition: null,
+  recognitionSupported: false,speechQueue: [],
   speechPendingText: "",
   speechWorkerPromise: null,
 
@@ -1337,12 +1321,7 @@ const maxOutput = $("maxOutput");
 const maxInput = $("maxInput");
 
 const maxBarMessage = $("maxBarMessage");
-const maxBarState = $("maxBarState");
-
-const voiceButton = $("voiceButton");
-
-
-/* =========================================================
+const maxBarState = $("maxBarState");/* =========================================================
    BOOT
 ========================================================= */
 
@@ -1642,8 +1621,6 @@ function setupMAX() {
   });
 
   maxInput.addEventListener("input", () => {
-    if (state.voiceProgrammaticInput) return;
-    state.voiceUserEdited = true;
   });
 
   maxInput.addEventListener("keydown", event => {
@@ -2207,169 +2184,6 @@ async function showNewsWidget() {
     setMAXStatus("I couldn't reach the news feed, Sir.");
   }
 }
-
-async function handleFastVoiceCommand(command) {
-  const lower = command.toLowerCase().trim();
-
-  if (/^(show )?(me )?(the )?time$|^what time is it$|^current time$/.test(lower)) {
-    showTimeWidget();
-    return true;
-  }
-
-  if (/^(show )?(me )?(the )?weather$|^what'?s the weather$|^weather now$/.test(lower)) {
-    await showWeatherWidget();
-    return true;
-  }
-
-  if (/^(show )?(me )?(the )?news$|^latest news$|^what'?s in the news$|^what is in the news$|^what'?s happening$/.test(lower)) {
-    await showNewsWidget();
-    return true;
-  }
-
-  // Instant music controls.
-  if (
-    lower === "play music" ||
-    lower === "open music" ||
-    lower === "start music"
-  ) {
-    window.open("https://music.youtube.com", "_blank", "noopener,noreferrer");
-    setMAXStatus("Opening music, Sir.");
-    return true;
-  }
-
-  const playMatch = lower.match(/^(?:play|find) (.+)$/i);
-
-  if (playMatch && playMatch[1] && !/news|music news/i.test(playMatch[1])) {
-    const query = playMatch[1].trim();
-
-    if (query.length >= 2) {
-      window.open(
-        "https://music.youtube.com/search?q=" + encodeURIComponent(query),
-        "_blank",
-        "noopener,noreferrer"
-      );
-
-      setMAXStatus(`Searching music for "${query}", Sir.`);
-      return true;
-    }
-  }
-
-  if (
-    lower === "news" ||
-    lower === "show me the news" ||
-    lower === "what's in the news" ||
-    lower === "what is in the news" ||
-    lower === "latest news" ||
-    lower === "what's happening"
-  ) {
-    return showLatestNews();
-  }
-
-  return false;
-}
-
-function handleVoiceCommand(text) {
-  const lower = text.toLowerCase().trim();
-
-  const wakeWords = [
-    "max",
-    "hey max",
-    "okay max",
-    "ok max",
-    "yo max",
-    "hello max"
-  ];
-
-  let command = lower;
-
-  /*
-    Remove wake phrase if present.
-  */
-  for (const wake of wakeWords) {
-    if (command.startsWith(wake)) {
-      command = command.slice(wake.length).trim();
-      break;
-    }
-  }
-
-  /*
-    If MAX is not explicitly mentioned, still allow direct
-    commands while continuous voice mode is active.
-  */
-  if (!command) {
-    setMAXStatus("Yes, Sir?");
-    return;
-  }
-
-  /*
-    Fast local commands first.
-    These never wait for Gemini.
-  */
-  handleFastVoiceCommand(command).then(handled => {
-    if (handled) return;
-    handleVoiceCommandAI(command);
-  });
-  return;
-}
-
-function handleVoiceCommandAI(command) {
-  /*
-    Local Waypoint commands.
-  */
-  if (
-    command === "open files" ||
-    command === "show files"
-  ) {
-    openPage("files");
-    setMAXStatus("Opening files, Sir.");
-    return;
-  }
-
-  if (
-    command === "open projects" ||
-    command === "show projects"
-  ) {
-    openPage("projects");
-    setMAXStatus("Opening projects, Sir.");
-    return;
-  }
-
-  if (
-    command === "open max" ||
-    command === "show max"
-  ) {
-    openPage("max");
-    setMAXStatus("Opening MAX, Sir.");
-    return;
-  }
-
-  if (
-    command === "open system" ||
-    command === "show system"
-  ) {
-    openPage("system");
-    setMAXStatus("Opening system, Sir.");
-    return;
-  }
-
-  if (
-    command === "go home" ||
-    command === "open overview"
-  ) {
-    openPage("overview");
-    setMAXStatus("Opening overview, Sir.");
-    return;
-  }
-
-  /*
-    Everything else goes to MAX.
-
-    Do NOT navigate to the MAX page for voice commands.
-    MAX can respond from the current Waypoint page.
-  */
-  sendToMAX(command);
-}
-
 
 /* =========================================================
    SHORTCUTS
