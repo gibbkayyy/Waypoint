@@ -2006,6 +2006,14 @@ async function speakMAX(text) {
    VOICE RECOGNITION
 ========================================================= */
 
+function normalizeVoiceText(text) {
+  return String(text || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9' ]+/g, " ")
+    .replace(/\\s+/g, " ")
+    .trim();
+}
+
 function setupVoice() {
   const Recognition =
     window.SpeechRecognition ||
@@ -2022,7 +2030,11 @@ function setupVoice() {
   state.recognitionSupported = true;
 
   const recognition = new Recognition();
-  recognition.continuous = true;
+
+  // IMPORTANT: continuous recognition is the source of most duplicate
+  // transcripts on Chrome/Android. Treat each recognition run as ONE
+  // utterance, then deliberately start a fresh run after it ends.
+  recognition.continuous = false;
   recognition.interimResults = true;
   recognition.lang = "en-GB";
   recognition.maxAlternatives = 1;
@@ -2030,14 +2042,7 @@ function setupVoice() {
 
   recognition.onstart = () => {
     state.voiceActive = true;
-
-    // Do not reset the transcript when the browser reconnects the
-    // recognition service. Only initialize it for a genuinely new
-    // listening session.
-    if (!state.voiceCommittedText.trim() && maxInput.value.trim()) {
-      state.voiceBaseText = maxInput.value.trim();
-      state.voiceCommittedText = state.voiceBaseText;
-    }
+    state.voiceSessionText = "";
 
     voiceButton.classList.add("active");
     $("voiceStatusCard").textContent = "Listening";
@@ -2054,11 +2059,12 @@ function setupVoice() {
       return;
     }
 
-    let interimParts = [];
-    let changedFinal = false;
+    let latestInterim = "";
+    let finalText = "";
 
-    // Final results are permanent; interim results are temporary hypotheses.
-    // Re-reading the result list prevents interim text from being appended twice.
+    // With continuous=false, this recognition run owns one utterance.
+    // Never append result events together: Chrome can replay result data
+    // when its speech service reconnects.
     for (let i = event.resultIndex; i < event.results.length; i++) {
       const result = event.results[i];
       const transcript = result[0]?.transcript?.trim() || "";
@@ -2066,54 +2072,52 @@ function setupVoice() {
       if (!transcript) continue;
 
       if (result.isFinal) {
-        const committed = state.voiceCommittedText.trim();
-        const normalized = transcript.replace(/\s+/g, " ");
-
-        // Browsers can repeat the previous final phrase after continuous
-        // recognition reconnects. Ignore an exact repeated suffix.
-        if (!committed || !committed.toLowerCase().endsWith(normalized.toLowerCase())) {
-          state.voiceCommittedText = committed
-            ? committed + " " + normalized
-            : normalized;
-          changedFinal = true;
-        }
+        finalText = transcript;
       } else {
-        interimParts.push(transcript);
+        latestInterim = transcript;
       }
     }
 
-    const interimText = interimParts.join(" ").replace(/\s+/g, " ").trim();
-    const committedText = state.voiceCommittedText.replace(/\s+/g, " ").trim();
-    const displayText = [committedText, interimText].filter(Boolean).join(" ").trim();
+    const visibleText = (finalText || latestInterim).replace(/\\s+/g, " ").trim();
 
-    if (displayText) {
-      maxInput.value = displayText;
+    if (visibleText) {
+      state.voiceSessionText = visibleText;
+      maxInput.value = visibleText;
       maxInput.focus();
       setMAXStatus("Listening, Sir.");
     }
 
-    // Only auto-send while listening, after the speech has gone quiet.
-    // The type box is the single source of truth for the message.
-    if (committedText) {
+    // Only FINAL speech can be sent. Interim recognition is never treated
+    // as a message, so partial words cannot be duplicated into MAX.
+    if (finalText) {
+      const message = finalText.replace(/\\s+/g, " ").trim();
+      const normalized = normalizeVoiceText(message);
+      const now = Date.now();
+
+      // Extra guard for Android/Chrome occasionally delivering the same
+      // final phrase twice during a recognition restart.
+      if (
+        normalized &&
+        normalized === state.lastVoiceSentNormalized &&
+        now - state.lastVoiceSentAt < 5000
+      ) {
+        return;
+      }
+
+      state.lastVoiceSentNormalized = normalized;
+      state.lastVoiceSentAt = now;
+      state.voiceSessionText = "";
+      state.voiceBaseText = "";
+      state.voiceCommittedText = "";
+      maxInput.value = "";
+
       clearTimeout(state.voiceSendTimer);
+      state.voiceSendTimer = null;
 
-      state.voiceSendTimer = setTimeout(() => {
-        if (!state.voiceActive || state.voiceSuppressed || state.processingMAX || state.speaking) {
-          return;
-        }
-
-        const message = maxInput.value.trim();
-        if (!message) return;
-
-        state.voiceSendTimer = null;
-        state.voiceBaseText = "";
-        state.voiceCommittedText = "";
-        maxInput.value = "";
-
-        sendToMAX(message);
-      }, interimText ? 2400 : (changedFinal ? 2200 : 2400));
+      sendToMAX(message);
     }
   };
+
   recognition.onerror = event => {
     console.warn("Voice recognition:", event.error);
 
@@ -2130,6 +2134,10 @@ function setupVoice() {
   };
 
   recognition.onend = () => {
+    // A recognition run is disposable. We never carry its transcript into
+    // the next run, which prevents the classic "hello hello" reconnect bug.
+    state.voiceSessionText = "";
+
     if (state.voiceActive && !state.voiceSuppressed && !state.processingMAX && !state.speaking) {
       setTimeout(() => {
         if (!state.voiceActive || state.voiceSuppressed || state.processingMAX || state.speaking) {
@@ -2139,10 +2147,11 @@ function setupVoice() {
         try {
           recognition.start();
         } catch {}
-      }, 250);
+      }, 180);
     }
   };
 }
+
 function pauseVoiceForMAX() {
   state.voiceSuppressed = true;
 
@@ -2184,8 +2193,10 @@ function startVoice() {
 
   state.voiceActive = true;
   clearTimeout(state.voiceSendTimer);
+  state.voiceSendTimer = null;
   state.voiceBaseText = maxInput.value.trim();
   state.voiceCommittedText = state.voiceBaseText;
+  state.voiceSessionText = "";
 
   try {
     state.recognition.start();
@@ -2199,6 +2210,7 @@ function stopVoice() {
   state.voiceSendTimer = null;
   state.voiceBaseText = maxInput.value.trim();
   state.voiceCommittedText = state.voiceBaseText;
+  state.voiceSessionText = "";
 
   voiceButton.classList.remove("active");
 
