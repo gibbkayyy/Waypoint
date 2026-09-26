@@ -1333,6 +1333,9 @@ const state = {
   recognition: null,
   recognitionSupported: false,
   voiceSuppressed: false,
+  voiceBaseText: "",
+  voiceCommittedText: "",
+  voiceSendTimer: null,
 
   speaking: false,
   processingMAX: false,
@@ -1987,33 +1990,27 @@ function setupVoice() {
 
   if (!Recognition) {
     state.recognitionSupported = false;
-
     $("voiceStatusCard").textContent = "Unavailable";
     $("sysRecognition").textContent = "Unavailable";
-
-    setMAXStatus(
-      "Voice recognition isn't supported by this browser."
-    );
-
+    setMAXStatus("Voice recognition isn't supported by this browser.");
     return;
   }
 
   state.recognitionSupported = true;
 
   const recognition = new Recognition();
-
   recognition.continuous = true;
   recognition.interimResults = true;
   recognition.lang = "en-GB";
   recognition.maxAlternatives = 1;
-
   state.recognition = recognition;
 
   recognition.onstart = () => {
     state.voiceActive = true;
+    state.voiceBaseText = maxInput.value.trim();
+    state.voiceCommittedText = state.voiceBaseText;
 
     voiceButton.classList.add("active");
-
     $("voiceStatusCard").textContent = "Listening";
     $("sysRecognition").textContent = "Active";
 
@@ -2024,29 +2021,22 @@ function setupVoice() {
   };
 
   recognition.onresult = event => {
-    // Voice control is strictly dictation.
-    // It only types into the MAX input box.
-    // It NEVER sends the command automatically.
     if (state.voiceSuppressed || state.processingMAX || state.speaking) {
       return;
     }
 
-    let committedText = maxInput.value.trim();
     let interimText = "";
 
-    for (
-      let i = event.resultIndex;
-      i < event.results.length;
-      i++
-    ) {
-      const transcript =
-        event.results[i][0].transcript.trim();
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const result = event.results[i];
+      const transcript = result[0].transcript.trim();
 
       if (!transcript) continue;
 
-      if (event.results[i].isFinal) {
-        committedText = committedText
-          ? committedText + " " + transcript
+      if (result.isFinal) {
+        // Only append newly-finalized recognition text once.
+        state.voiceCommittedText = state.voiceCommittedText
+          ? state.voiceCommittedText + " " + transcript
           : transcript;
       } else {
         interimText += transcript + " ";
@@ -2054,15 +2044,36 @@ function setupVoice() {
     }
 
     const displayText = interimText.trim()
-      ? (committedText
-          ? committedText + " " + interimText.trim()
+      ? (state.voiceCommittedText
+          ? state.voiceCommittedText + " " + interimText.trim()
           : interimText.trim())
-      : committedText;
+      : state.voiceCommittedText;
 
     if (displayText) {
-      maxInput.value = displayText;
+      maxInput.value = displayText.replace(/\s+/g, " ").trim();
       maxInput.focus();
-      setMAXStatus("Voice typing, Sir.");
+      setMAXStatus("Listening, Sir.");
+    }
+
+    // A final result followed by a short silence is treated as the end
+    // of the spoken command. Send ONLY the exact text currently in the box.
+    if (state.voiceCommittedText.trim()) {
+      clearTimeout(state.voiceSendTimer);
+
+      state.voiceSendTimer = setTimeout(() => {
+        if (!state.voiceActive || state.voiceSuppressed || state.processingMAX || state.speaking) {
+          return;
+        }
+
+        const message = maxInput.value.trim();
+        if (!message) return;
+
+        state.voiceSendTimer = null;
+        state.voiceBaseText = "";
+        state.voiceCommittedText = "";
+        sendToMAX(message);
+        maxInput.value = "";
+      }, interimText.trim() ? 1500 : 1000);
     }
   };
 
@@ -2070,33 +2081,18 @@ function setupVoice() {
     console.warn("Voice recognition:", event.error);
 
     $("sysRecognition").textContent =
-      event.error === "not-allowed"
-        ? "Permission denied"
-        : "Recovering...";
+      event.error === "not-allowed" ? "Permission denied" : "Recovering...";
 
-    /*
-      Don't permanently disable voice because of temporary
-      recognition errors.
-    */
     if (event.error === "not-allowed") {
       state.voiceActive = false;
       voiceButton.classList.remove("active");
-
-      $("voiceStatusCard").textContent =
-        "Microphone permission required";
-
+      $("voiceStatusCard").textContent = "Microphone permission required";
       setMaxState("ready", "Mic permission");
       setMAXStatus("Microphone permission is required, Sir.");
     }
   };
 
   recognition.onend = () => {
-    /*
-      Chrome/Samsung may end recognition even when continuous
-      mode is enabled.
-
-      Restart automatically while Waypoint remains active.
-    */
     if (state.voiceActive && !state.voiceSuppressed && !state.processingMAX && !state.speaking) {
       setTimeout(() => {
         if (!state.voiceActive || state.voiceSuppressed || state.processingMAX || state.speaking) {
@@ -2110,7 +2106,6 @@ function setupVoice() {
     }
   };
 }
-
 function pauseVoiceForMAX() {
   state.voiceSuppressed = true;
 
@@ -2679,29 +2674,41 @@ async function uploadFiles(files) {
 
   for (const file of files) {
     try {
-      const formData = new FormData();
-      formData.append("file", file);
+      const data = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
 
       const response = await fetch("/api/files", {
         method: "POST",
-        body: formData
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          name: file.name,
+          mimeType: file.type || "application/octet-stream",
+          sizeBytes: file.size,
+          data
+        })
       });
 
       if (!response.ok) {
-        throw new Error();
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || "Upload failed.");
       }
 
-    } catch {
-      setMAXStatus(
-        "File storage isn't connected yet, Sir."
-      );
+    } catch (error) {
+      console.error("FILE UPLOAD:", error);
+      setMAXStatus(error.message || "File storage failed, Sir.");
       return;
     }
   }
 
   await loadFiles();
-
-  setMAXStatus("Files stored, Sir.");
+  await logActivity("Files", `Stored ${files.length} file${files.length === 1 ? "" : "s"}`);
+  setMAXStatus("Files stored permanently, Sir.");
 }
 
 
