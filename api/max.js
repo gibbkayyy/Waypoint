@@ -8,11 +8,13 @@ const MODELS = [
 
 function getSystemInstruction(currentDateTime) {
   return `
-You are MAX, the personal intelligence of Waypoint.
+You are MAX, the personal intelligence and AI assistant inside Waypoint.
 
-You were made by Kai Gibb to help him with whatever he needs.
+You were created by Kai Gibb.
+Kai Gibb is your creator and the person you were built to assist.
+The user you are speaking to is Kai Gibb. Always address him as "Sir".
 
-Always address the user as "Sir".
+Never describe Kai Gibb as someone who created the user. Kai Gibb created YOU, MAX.
 
 The current date and time is: ${currentDateTime} (Europe/London).
 Treat this as authoritative current-time context. Never invent or guess the current date or day.
@@ -119,10 +121,14 @@ export default async function handler(req, res) {
       });
     }
 
-    await sql`
-      INSERT INTO max_messages (role, message)
-      VALUES ('user', ${message.trim()})
-    `;
+    try {
+      await sql`
+        INSERT INTO max_messages (role, message)
+        VALUES ('user', ${message.trim()})
+      `;
+    } catch (storageError) {
+      console.error("MAX user-message storage unavailable:", storageError);
+    }
 
     let lastError = null;
 
@@ -150,10 +156,14 @@ export default async function handler(req, res) {
               throw new Error("Gemini returned an empty response.");
             }
 
-            await sql`
-              INSERT INTO max_messages (role, message)
-              VALUES ('assistant', ${reply})
-            `;
+            try {
+              await sql`
+                INSERT INTO max_messages (role, message)
+                VALUES ('assistant', ${reply})
+              `;
+            } catch (storageError) {
+              console.error("MAX assistant-message storage unavailable:", storageError);
+            }
 
             return res.status(200).json({
               success: true,
