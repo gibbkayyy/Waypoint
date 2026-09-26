@@ -2196,13 +2196,17 @@ async function getLiveVoiceToken() {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
-    }
+    },
+    cache: "no-store"
   });
 
-  const data = await response.json();
+  const data = await response.json().catch(() => ({}));
 
   if (!response.ok || !data.token) {
-    throw new Error(data.error || "Unable to start live voice.");
+    throw new Error(
+      data.error ||
+      `Live voice token request failed (HTTP ${response.status}).`
+    );
   }
 
   return data.token;
@@ -2210,6 +2214,7 @@ async function getLiveVoiceToken() {
 
 function closeLiveVoice() {
   liveVoice.stopping = true;
+  liveVoice.active = false;
 
   try {
     liveVoice.processor?.disconnect();
@@ -2255,14 +2260,60 @@ async function setupLiveVoice() {
   liveVoice.socket = socket;
   liveVoice.stopping = false;
 
+  let socketOpened = false;
+
   await new Promise((resolve, reject) => {
-    socket.onopen = resolve;
-    socket.onerror = () => reject(new Error("Live voice connection failed."));
+    const timeout = setTimeout(() => {
+      try { socket.close(); } catch {}
+      reject(new Error("Live voice connection timed out."));
+    }, 10000);
+
+    socket.onopen = () => {
+      clearTimeout(timeout);
+      socketOpened = true;
+      resolve();
+    };
+
+    socket.onerror = () => {
+      clearTimeout(timeout);
+      reject(new Error(
+        socketOpened
+          ? "Gemini Live reported a WebSocket error."
+          : "Gemini Live rejected the WebSocket connection."
+      ));
+    };
+
+    socket.onclose = event => {
+      if (!socketOpened) {
+        clearTimeout(timeout);
+        reject(new Error(
+          event.reason
+            ? `Gemini Live closed the connection: ${event.reason}`
+            : `Gemini Live closed the connection (code ${event.code}).`
+        ));
+      }
+    };
   });
 
-  socket.onmessage = event => {
+  socket.onmessage = event =>
     try {
       const response = JSON.parse(event.data);
+
+      if (response.setupComplete) {
+        setMAXStatus("Live voice connected, Sir.");
+        return;
+      }
+
+      if (response.error) {
+        const message =
+          response.error.message ||
+          response.error.status ||
+          "Gemini Live returned an error.";
+        console.error("LIVE VOICE SERVER ERROR:", response.error);
+        setMAXStatus(message);
+        return;
+      }
+
       const content = response.serverContent;
 
       const interim = content?.interimInputTranscription?.text;
@@ -2352,6 +2403,7 @@ async function setupLiveVoice() {
   });
 
   liveVoice.audioContext = new AudioContext();
+  await liveVoice.audioContext.resume();
 
   liveVoice.source =
     liveVoice.audioContext.createMediaStreamSource(liveVoice.stream);
@@ -2441,7 +2493,15 @@ async function startVoice() {
     $("voiceStatusCard").textContent = "Voice error";
     $("sysRecognition").textContent = "Unavailable";
     setMaxState("error", "Voice error");
-    setMAXStatus("Live voice couldn't start, Sir.");
+
+    const reason =
+      error?.name === "NotAllowedError"
+        ? "Microphone permission was denied, Sir."
+        : error?.name === "NotFoundError"
+          ? "No microphone was found, Sir."
+          : error?.message || "Unknown live voice error.";
+
+    setMAXStatus(`Live voice couldn't start: ${reason}`);
   }
 }
 
