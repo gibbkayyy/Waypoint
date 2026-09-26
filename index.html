@@ -1398,16 +1398,28 @@ async function bootWaypoint() {
   boot.style.display = "flex";
   loginScreen.style.display = "none";
   app.style.display = "none";
+  bootStatus.textContent = "Authenticating...";
 
   initialiseSystem().catch(error => {
     console.error("WAYPOINT INIT:", error);
     setMAXStatus("Some background systems are still loading, Sir.");
   });
 
+  const controller = new AbortController();
+  const authTimeout = setTimeout(() => controller.abort(), 5000);
+
   try {
     const response = await fetch("/api/auth/session", {
-      cache: "no-store"
+      cache: "no-store",
+      signal: controller.signal
     });
+
+    clearTimeout(authTimeout);
+
+    if (!response.ok) {
+      throw new Error(`Authentication check returned HTTP ${response.status}.`);
+    }
+
     const data = await response.json();
 
     if (data.authenticated) {
@@ -1420,9 +1432,11 @@ async function bootWaypoint() {
     boot.style.display = "none";
     showLogin();
   } catch (error) {
+    clearTimeout(authTimeout);
     console.warn("AUTH VERIFY:", error);
 
     if (localStorage.getItem("waypoint_authenticated") === "1") {
+      console.warn("AUTH VERIFY: timed out or failed; using existing local session.");
       enterApp();
     } else {
       boot.style.display = "none";
