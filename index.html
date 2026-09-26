@@ -53,6 +53,74 @@
       cursor: pointer;
     }
 
+    /* BOOT */
+
+    #boot {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background:
+        radial-gradient(circle at center, rgba(39,119,255,.13), transparent 40%),
+        #05070c;
+      transition: opacity .35s ease;
+    }
+
+    .boot-inner {
+      width: min(430px, 85vw);
+      text-align: center;
+    }
+
+    .boot-logo {
+      width: 72px;
+      height: 72px;
+      margin: 0 auto 22px;
+      border: 1px solid rgba(78,150,255,.45);
+      border-radius: 20px;
+      display: grid;
+      place-items: center;
+      font-size: 26px;
+      font-weight: 800;
+      color: white;
+      box-shadow: 0 0 35px rgba(39,119,255,.22), inset 0 0 25px rgba(39,119,255,.08);
+    }
+
+    .boot-title {
+      font-size: 28px;
+      font-weight: 750;
+      letter-spacing: .08em;
+    }
+
+    .boot-status {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .boot-line {
+      height: 2px;
+      margin-top: 24px;
+      overflow: hidden;
+      background: rgba(255,255,255,.06);
+      border-radius: 999px;
+    }
+
+    .boot-line span {
+      display: block;
+      width: 35%;
+      height: 100%;
+      background: var(--blue);
+      box-shadow: 0 0 15px var(--blue);
+      animation: bootLoad 1.5s infinite ease-in-out;
+    }
+
+    @keyframes bootLoad {
+      0% { transform: translateX(-120%); }
+      100% { transform: translateX(420%); }
+    }
+
     /* LOGIN */
 
     #loginScreen {
@@ -865,6 +933,16 @@
     <div id="quickWidgetContent"></div>
   </div>
 
+  <!-- BOOT -->
+  <div id="boot">
+    <div class="boot-inner">
+      <div class="boot-logo">W</div>
+      <div class="boot-title">WAYPOINT</div>
+      <div class="boot-status" id="bootStatus">Initializing system...</div>
+      <div class="boot-line"><span></span></div>
+    </div>
+  </div>
+
   <!-- LOGIN -->
   <section id="loginScreen" style="display:none">
     <div class="login-card">
@@ -1317,10 +1395,9 @@ const voiceButton = $("voiceButton");
 ========================================================= */
 
 async function bootWaypoint() {
-  // Waypoint paints immediately. Authentication happens in the background.
-  boot.style.display = "none";
+  boot.style.display = "flex";
   loginScreen.style.display = "none";
-  app.style.display = "block";
+  app.style.display = "none";
 
   initialiseSystem().catch(error => {
     console.error("WAYPOINT INIT:", error);
@@ -1335,15 +1412,20 @@ async function bootWaypoint() {
 
     if (data.authenticated) {
       localStorage.setItem("waypoint_authenticated", "1");
+      enterApp();
       return;
     }
 
     localStorage.removeItem("waypoint_authenticated");
+    boot.style.display = "none";
     showLogin();
   } catch (error) {
     console.warn("AUTH VERIFY:", error);
 
-    if (localStorage.getItem("waypoint_authenticated") !== "1") {
+    if (localStorage.getItem("waypoint_authenticated") === "1") {
+      enterApp();
+    } else {
+      boot.style.display = "none";
       showLogin();
     }
   }
@@ -3217,4 +3299,3 @@ if ("serviceWorker" in navigator) {
 </body>
 </html>
 
-One important bit: this frontend is ready for the permanent backend, but it cannot create permanent storage by itself. The next step is the backend/database layer for "/api/projects", "/api/files", "/api/activity", plus the streaming "/api/max". Once those are connected, refreshing Waypoint won't wipe anything.
