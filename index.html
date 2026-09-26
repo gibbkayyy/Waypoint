@@ -2297,7 +2297,7 @@ async function setupLiveVoice() {
     };
   });
 
-  socket.onmessage = event =>
+  socket.onmessage = event => {
     try {
       const response = JSON.parse(event.data);
 
@@ -2368,6 +2368,9 @@ async function setupLiveVoice() {
           }
         }
       }
+    } catch (error) {
+      console.warn("LIVE VOICE MESSAGE:", error);
+    }
     } catch (error) {
       console.warn("LIVE VOICE MESSAGE:", error);
     }
