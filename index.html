@@ -1498,13 +1498,13 @@ setupMAX();
   $("sysOnline").textContent =
     navigator.onLine ? "Online" : "Offline";
 
-  await checkHealth();
+  checkHealth().catch(console.error);
 
-  await Promise.all([
+  Promise.all([
     loadProjects(),
     loadFiles(),
     loadActivity()
-  ]);
+  ]).catch(console.error);
 
   /*
     Start voice after the system is ready.
@@ -1714,7 +1714,7 @@ function setupMAX() {
   also handles that so Waypoint doesn't break during updates.
 */
 
-async function sendToMAX(message) {
+async async function sendToMAX(message) {
   const normalizedMessage = message.toLowerCase().trim();
 
   if (
@@ -1923,7 +1923,7 @@ async function sendToMAX(message) {
 let maxAudio = null;
 let maxAudioUrl = null;
 
-async function speakMAX(text) {
+async async function speakMAX(text) {
   const spokenText = String(text || "").trim();
   if (!spokenText) return;
 
@@ -2041,7 +2041,7 @@ function setupVoice() {
   // IMPORTANT: continuous recognition is the source of most duplicate
   // transcripts on Chrome/Android. Treat each recognition run as ONE
   // utterance, then deliberately start a fresh run after it ends.
-  recognition.continuous = false;
+  recognition.continuous = true;
   recognition.interimResults = true;
   recognition.lang = "en-GB";
   recognition.maxAlternatives = 1;
@@ -2062,30 +2062,24 @@ function setupVoice() {
   };
 
   recognition.onresult = event => {
-    if (!state.voiceActive || state.voiceSuppressed || state.processingMAX || state.speaking) {
-      return;
-    }
+    if (!state.voiceActive || state.voiceSuppressed || state.processingMAX || state.speaking) return;
 
-    let latestInterim = "";
     let finalText = "";
+    let latestInterim = "";
 
-    // With continuous=false, this recognition run owns one utterance.
-    // Never append result events together: Chrome can replay result data
-    // when its speech service reconnects.
-    for (let i = event.resultIndex; i < event.results.length; i++) {
+    for (let i = 0; i < event.results.length; i++) {
       const result = event.results[i];
       const transcript = result[0]?.transcript?.trim() || "";
-
       if (!transcript) continue;
 
       if (result.isFinal) {
-        finalText = transcript;
-      } else {
+        finalText += (finalText ? " " : "") + transcript;
+      } else if (i >= event.resultIndex) {
         latestInterim = transcript;
       }
     }
 
-    const visibleText = (finalText || latestInterim).replace(/\\s+/g, " ").trim();
+    const visibleText = (finalText || latestInterim).replace(/\s+/g, " ").trim();
 
     if (visibleText) {
       state.voiceSessionText = visibleText;
@@ -2094,37 +2088,33 @@ function setupVoice() {
       setMAXStatus("Listening, Sir.");
     }
 
-    // Only FINAL speech can be sent. Interim recognition is never treated
-    // as a message, so partial words cannot be duplicated into MAX.
     if (finalText) {
-      const message = finalText.replace(/\\s+/g, " ").trim();
-      const normalized = normalizeVoiceText(message);
-      const now = Date.now();
-
-      // Extra guard for Android/Chrome occasionally delivering the same
-      // final phrase twice during a recognition restart.
-      if (
-        normalized &&
-        normalized === state.lastVoiceSentNormalized &&
-        now - state.lastVoiceSentAt < 5000
-      ) {
-        return;
-      }
-
-      state.lastVoiceSentNormalized = normalized;
-      state.lastVoiceSentAt = now;
-      state.voiceSessionText = "";
-      state.voiceBaseText = "";
-      state.voiceCommittedText = "";
-      maxInput.value = "";
-
       clearTimeout(state.voiceSendTimer);
-      state.voiceSendTimer = null;
 
-      sendToMAX(message);
+      const message = finalText.replace(/\s+/g, " ").trim();
+
+      state.voiceSendTimer = setTimeout(() => {
+        if (!state.voiceActive || state.voiceSuppressed || state.processingMAX || state.speaking) return;
+
+        const normalized = normalizeVoiceText(message);
+        const now = Date.now();
+
+        if (normalized && normalized === state.lastVoiceSentNormalized && now - state.lastVoiceSentAt < 5000) {
+          return;
+        }
+
+        state.lastVoiceSentNormalized = normalized;
+        state.lastVoiceSentAt = now;
+        state.voiceSessionText = "";
+        state.voiceBaseText = "";
+        state.voiceCommittedText = "";
+        maxInput.value = "";
+        state.voiceSendTimer = null;
+
+        sendToMAX(message);
+      }, 1100);
     }
   };
-
   recognition.onerror = event => {
     console.warn("Voice recognition:", event.error);
 
