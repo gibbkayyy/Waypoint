@@ -1,7 +1,9 @@
-import sql from "./db.js";
+import sql, { ensureSchema } from "./db.js";
 
 export default async function handler(req, res) {
   try {
+    await ensureSchema();
+
     // GET — load all projects
     if (req.method === "GET") {
       const projects = await sql`
