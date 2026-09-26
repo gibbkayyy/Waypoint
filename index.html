@@ -2021,43 +2021,51 @@ function setupVoice() {
   };
 
   recognition.onresult = event => {
-    if (state.voiceSuppressed || state.processingMAX || state.speaking) {
+    if (!state.voiceActive || state.voiceSuppressed || state.processingMAX || state.speaking) {
       return;
     }
 
-    let interimText = "";
+    let interimParts = [];
+    let changedFinal = false;
 
+    // Final results are permanent; interim results are temporary hypotheses.
+    // Re-reading the result list prevents interim text from being appended twice.
     for (let i = event.resultIndex; i < event.results.length; i++) {
       const result = event.results[i];
-      const transcript = result[0].transcript.trim();
+      const transcript = result[0]?.transcript?.trim() || "";
 
       if (!transcript) continue;
 
       if (result.isFinal) {
-        // Only append newly-finalized recognition text once.
-        state.voiceCommittedText = state.voiceCommittedText
-          ? state.voiceCommittedText + " " + transcript
-          : transcript;
+        const committed = state.voiceCommittedText.trim();
+        const normalized = transcript.replace(/\s+/g, " ");
+
+        // Browsers can repeat the previous final phrase after continuous
+        // recognition reconnects. Ignore an exact repeated suffix.
+        if (!committed || !committed.toLowerCase().endsWith(normalized.toLowerCase())) {
+          state.voiceCommittedText = committed
+            ? committed + " " + normalized
+            : normalized;
+          changedFinal = true;
+        }
       } else {
-        interimText += transcript + " ";
+        interimParts.push(transcript);
       }
     }
 
-    const displayText = interimText.trim()
-      ? (state.voiceCommittedText
-          ? state.voiceCommittedText + " " + interimText.trim()
-          : interimText.trim())
-      : state.voiceCommittedText;
+    const interimText = interimParts.join(" ").replace(/\s+/g, " ").trim();
+    const committedText = state.voiceCommittedText.replace(/\s+/g, " ").trim();
+    const displayText = [committedText, interimText].filter(Boolean).join(" ").trim();
 
     if (displayText) {
-      maxInput.value = displayText.replace(/\s+/g, " ").trim();
+      maxInput.value = displayText;
       maxInput.focus();
       setMAXStatus("Listening, Sir.");
     }
 
-    // A final result followed by a short silence is treated as the end
-    // of the spoken command. Send ONLY the exact text currently in the box.
-    if (state.voiceCommittedText.trim()) {
+    // Only auto-send while listening, after the speech has gone quiet.
+    // The type box is the single source of truth for the message.
+    if (committedText) {
       clearTimeout(state.voiceSendTimer);
 
       state.voiceSendTimer = setTimeout(() => {
@@ -2071,12 +2079,12 @@ function setupVoice() {
         state.voiceSendTimer = null;
         state.voiceBaseText = "";
         state.voiceCommittedText = "";
-        sendToMAX(message);
         maxInput.value = "";
-      }, interimText.trim() ? 1500 : 1000);
+
+        sendToMAX(message);
+      }, interimText ? 1800 : (changedFinal ? 1600 : 1800));
     }
   };
-
   recognition.onerror = event => {
     console.warn("Voice recognition:", event.error);
 
