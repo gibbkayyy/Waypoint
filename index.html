@@ -1839,6 +1839,10 @@ async function sendToMAX(message) {
                 fullText += payload.text;
                 displayMAX(fullText);
 
+                // Start TTS as soon as a complete sentence exists instead
+                // of waiting for the entire MAX response to finish.
+                queueMAXSpeechText(payload.text);
+
                 setMaxState("speaking", "Speaking");
                 setMAXStatus("Speaking, Sir.");
               }
