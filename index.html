@@ -2193,17 +2193,6 @@ function setupShortcuts() {
   document.addEventListener("keydown", event => {
 
     /*
-      Ctrl + Space = voice
-    */
-    if (
-      event.ctrlKey &&
-      event.code === "Space"
-    ) {
-      event.preventDefault();
-      toggleVoice();
-    }
-
-    /*
       Ctrl + Shift + M = MAX
     */
     if (
