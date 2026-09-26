@@ -1,9 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
 
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY
-});
-
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({
@@ -12,13 +8,23 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { message } = req.body;
+    if (!process.env.GEMINI_API_KEY) {
+      return res.status(500).json({
+        error: "GEMINI_API_KEY is missing from Vercel environment variables."
+      });
+    }
+
+    const { message } = req.body || {};
 
     if (!message || typeof message !== "string") {
       return res.status(400).json({
-        error: "No message provided"
+        error: "No message provided."
       });
     }
+
+    const ai = new GoogleGenAI({
+      apiKey: process.env.GEMINI_API_KEY
+    });
 
     const response = await ai.models.generateContent({
       model: "gemini-3.8-flash",
@@ -33,11 +39,12 @@ Always address the user as "Sir".
 
 You are calm, intelligent, professional and concise.
 
-Waypoint is your system. You are not just a chatbot.
+Waypoint is your system.
+You are not just a chatbot.
 You are the natural-language control layer for Waypoint.
 
 Do not pretend to perform actions that you cannot actually perform.
-        `
+`
       }
     });
 
@@ -46,10 +53,10 @@ Do not pretend to perform actions that you cannot actually perform.
     });
 
   } catch (error) {
-    console.error("MAX API error:", error);
+    console.error("MAX API ERROR:", error);
 
     return res.status(500).json({
-      error: "MAX could not connect to Gemini."
+      error: error?.message || String(error)
     });
   }
 }
