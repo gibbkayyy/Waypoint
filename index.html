@@ -1,2902 +1,1852 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
-
-    <meta
-        name="theme-color"
-        content="#05070c"
-    >
-
-    <meta
-        name="description"
-        content="Waypoint — personal digital command center"
-    >
-
-    <title>Waypoint</title>
-
-    <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        :root {
-            --bg: #05070c;
-            --panel: #0a0e16;
-            --panel-2: #0d121c;
-            --border: rgba(70, 145, 255, 0.16);
-            --border-bright: rgba(70, 145, 255, 0.38);
-            --blue: #3d8bff;
-            --blue-bright: #65a7ff;
-            --text: #eef5ff;
-            --muted: #7f8da3;
-            --danger: #ff5570;
-            --success: #45e0a5;
-        }
-
-        body {
-            min-height: 100vh;
-            background:
-                radial-gradient(
-                    circle at 75% 10%,
-                    rgba(40, 110, 255, 0.12),
-                    transparent 32%
-                ),
-                radial-gradient(
-                    circle at 10% 90%,
-                    rgba(30, 80, 180, 0.08),
-                    transparent 35%
-                ),
-                var(--bg);
-
-            color: var(--text);
-            font-family:
-                Inter,
-                system-ui,
-                -apple-system,
-                BlinkMacSystemFont,
-                "Segoe UI",
-                sans-serif;
-
-            overflow-x: hidden;
-        }
-
-        button,
-        input {
-            font: inherit;
-        }
-
-        button {
-            cursor: pointer;
-        }
-
-        /* ================================
-           LOGIN
-           ================================ */
-
-        #loginScreen {
-            position: fixed;
-            inset: 0;
-            z-index: 9999;
-
-            display: flex;
-            align-items: center;
-            justify-content: center;
-
-            background:
-                radial-gradient(
-                    circle at center,
-                    rgba(50, 120, 255, 0.12),
-                    transparent 45%
-                ),
-                #05070c;
-        }
-
-        .login-card {
-            width: min(420px, calc(100% - 32px));
-            padding: 34px;
-
-            border: 1px solid var(--border-bright);
-            border-radius: 20px;
-
-            background: rgba(9, 13, 21, 0.88);
-            backdrop-filter: blur(24px);
-
-            box-shadow:
-                0 30px 100px rgba(0, 0, 0, 0.55),
-                0 0 50px rgba(40, 110, 255, 0.08);
-        }
-
-        .login-logo {
-            font-size: 34px;
-            font-weight: 800;
-            letter-spacing: 0.12em;
-        }
-
-        .login-subtitle {
-            color: var(--muted);
-            margin-top: 8px;
-            margin-bottom: 28px;
-        }
-
-        .field {
-            margin-bottom: 16px;
-        }
-
-        .field label {
-            display: block;
-            margin-bottom: 7px;
-            color: #aab8cd;
-            font-size: 13px;
-        }
-
-        .field input {
-            width: 100%;
-            padding: 13px 14px;
-
-            color: var(--text);
-            background: #070a11;
-
-            border: 1px solid var(--border);
-            border-radius: 10px;
-
-            outline: none;
-        }
-
-        .field input:focus {
-            border-color: var(--blue);
-            box-shadow: 0 0 0 3px rgba(61, 139, 255, 0.08);
-        }
-
-        .primary-button {
-            width: 100%;
-            border: 0;
-            border-radius: 10px;
-
-            padding: 13px;
-
-            color: white;
-            background: linear-gradient(
-                135deg,
-                #2673eb,
-                #4b9cff
-            );
-
-            font-weight: 700;
-
-            transition:
-                transform 0.15s ease,
-                filter 0.15s ease;
-        }
-
-        .primary-button:hover {
-            transform: translateY(-1px);
-            filter: brightness(1.08);
-        }
-
-        #loginError {
-            min-height: 20px;
-            margin-top: 12px;
-
-            color: var(--danger);
-            font-size: 13px;
-        }
-
-        /* ================================
-           APP
-           ================================ */
-
-        #app {
-            display: none;
-            min-height: 100vh;
-        }
-
-        .app-shell {
-            display: grid;
-            grid-template-columns: 240px 1fr;
-            min-height: 100vh;
-        }
-
-        /* ================================
-           SIDEBAR
-           ================================ */
-
-        .sidebar {
-            position: sticky;
-            top: 0;
-
-            height: 100vh;
-            padding: 22px 14px;
-
-            border-right: 1px solid var(--border);
-
-            background:
-                linear-gradient(
-                    180deg,
-                    rgba(10, 15, 25, 0.96),
-                    rgba(5, 8, 13, 0.96)
-                );
-
-            display: flex;
-            flex-direction: column;
-        }
-
-        .brand {
-            padding: 8px 12px 25px;
-        }
-
-        .brand-name {
-            font-size: 21px;
-            font-weight: 800;
-            letter-spacing: 0.14em;
-        }
-
-        .brand-status {
-            display: flex;
-            align-items: center;
-            gap: 7px;
-
-            margin-top: 7px;
-
-            color: var(--muted);
-            font-size: 11px;
-        }
-
-        .status-dot {
-            width: 7px;
-            height: 7px;
-
-            border-radius: 50%;
-            background: var(--success);
-
-            box-shadow: 0 0 12px rgba(69, 224, 165, 0.8);
-        }
-
-        .nav {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-        }
-
-        .nav-button {
-            width: 100%;
-
-            display: flex;
-            align-items: center;
-            gap: 11px;
-
-            padding: 11px 12px;
-
-            color: #8e9bb0;
-            background: transparent;
-
-            border: 1px solid transparent;
-            border-radius: 9px;
-
-            text-align: left;
-
-            transition:
-                background 0.15s ease,
-                color 0.15s ease,
-                border-color 0.15s ease;
-        }
-
-        .nav-button:hover {
-            color: white;
-            background: rgba(61, 139, 255, 0.06);
-        }
-
-        .nav-button.active {
-            color: white;
-            background: rgba(61, 139, 255, 0.11);
-            border-color: var(--border);
-        }
-
-        .nav-icon {
-            width: 20px;
-            text-align: center;
-            opacity: 0.85;
-        }
-
-        .sidebar-bottom {
-            margin-top: auto;
-        }
-
-        .voice-card {
-            padding: 13px;
-
-            border: 1px solid var(--border);
-            border-radius: 12px;
-
-            background: rgba(61, 139, 255, 0.04);
-        }
-
-        .voice-title {
-            font-size: 12px;
-            font-weight: 700;
-        }
-
-        .voice-status {
-            margin-top: 5px;
-
-            color: var(--muted);
-            font-size: 11px;
-        }
-
-        .voice-button {
-            width: 100%;
-
-            margin-top: 10px;
-            padding: 9px;
-
-            border: 1px solid var(--border-bright);
-            border-radius: 8px;
-
-            color: white;
-            background: rgba(61, 139, 255, 0.08);
-        }
-
-        .voice-button:hover {
-            background: rgba(61, 139, 255, 0.16);
-        }
-
-        /* ================================
-           MAIN
-           ================================ */
-
-        .main {
-            min-width: 0;
-        }
-
-        .topbar {
-            height: 70px;
-
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-
-            padding: 0 28px;
-
-            border-bottom: 1px solid var(--border);
-
-            background: rgba(5, 7, 12, 0.65);
-            backdrop-filter: blur(18px);
-        }
-
-        .page-heading h1 {
-            font-size: 20px;
-        }
-
-        .page-heading p {
-            margin-top: 3px;
-
-            color: var(--muted);
-            font-size: 12px;
-        }
-
-        .clock {
-            text-align: right;
-        }
-
-        .clock-time {
-            font-size: 15px;
-            font-weight: 700;
-        }
-
-        .clock-date {
-            margin-top: 2px;
-
-            color: var(--muted);
-            font-size: 11px;
-        }
-
-        .content {
-            padding: 28px;
-        }
-
-        /* ================================
-           SECTIONS
-           ================================ */
-
-        .waypoint-section {
-            display: none;
-            animation: sectionIn 0.2s ease;
-        }
-
-        .waypoint-section.active {
-            display: block;
-        }
-
-        @keyframes sectionIn {
-            from {
-                opacity: 0;
-                transform: translateY(5px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .hero {
-            padding: 30px;
-
-            border: 1px solid var(--border);
-            border-radius: 18px;
-
-            background:
-                radial-gradient(
-                    circle at 80% 20%,
-                    rgba(61, 139, 255, 0.11),
-                    transparent 38%
-                ),
-                var(--panel);
-
-            margin-bottom: 20px;
-        }
-
-        .hero h2 {
-            font-size: clamp(27px, 4vw, 42px);
-            line-height: 1.05;
-        }
-
-        .hero p {
-            margin-top: 10px;
-            max-width: 650px;
-
-            color: var(--muted);
-            line-height: 1.6;
-        }
-
-        .grid {
-            display: grid;
-            grid-template-columns:
-                repeat(auto-fit, minmax(220px, 1fr));
-            gap: 14px;
-        }
-
-        .card {
-            padding: 20px;
-
-            border: 1px solid var(--border);
-            border-radius: 15px;
-
-            background: rgba(10, 14, 22, 0.8);
-        }
-
-        .card-title {
-            color: #a6b4c9;
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-        }
-
-        .card-value {
-            margin-top: 10px;
-
-            font-size: 25px;
-            font-weight: 750;
-        }
-
-        .card-small {
-            margin-top: 5px;
-
-            color: var(--muted);
-            font-size: 12px;
-        }
-
-        /* ================================
-           SECTION HEADER
-           ================================ */
-
-        .section-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-
-            margin-bottom: 18px;
-        }
-
-        .section-header h2 {
-            font-size: 25px;
-        }
-
-        .section-header p {
-            margin-top: 4px;
-
-            color: var(--muted);
-            font-size: 12px;
-        }
-
-        .action-button {
-            padding: 10px 14px;
-
-            color: white;
-            background: rgba(61, 139, 255, 0.1);
-
-            border: 1px solid var(--border-bright);
-            border-radius: 9px;
-        }
-
-        .action-button:hover {
-            background: rgba(61, 139, 255, 0.18);
-        }
-
-        /* ================================
-           MAX
-           ================================ */
-
-        .max-shell {
-            display: grid;
-            grid-template-columns: 1fr 260px;
-            gap: 16px;
-        }
-
-        .max-chat {
-            min-height: 560px;
-
-            display: flex;
-            flex-direction: column;
-
-            border: 1px solid var(--border);
-            border-radius: 16px;
-
-            background: var(--panel);
-            overflow: hidden;
-        }
-
-        .max-header {
-            padding: 16px 18px;
-
-            border-bottom: 1px solid var(--border);
-
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .max-name {
-            font-weight: 800;
-            letter-spacing: 0.08em;
-        }
-
-        .max-online {
-            color: var(--success);
-            font-size: 11px;
-        }
-
-        #maxMessages {
-            flex: 1;
-
-            padding: 20px;
-
-            overflow-y: auto;
-        }
-
-        .max-message {
-            max-width: 80%;
-
-            padding: 11px 13px;
-            margin-bottom: 10px;
-
-            border-radius: 11px;
-
-            line-height: 1.5;
-            font-size: 14px;
-        }
-
-        .max-message.max {
-            background: rgba(61, 139, 255, 0.08);
-            border: 1px solid var(--border);
-        }
-
-        .max-message.user {
-            margin-left: auto;
-
-            background: rgba(255, 255, 255, 0.05);
-        }
-
-        .max-input-area {
-            display: flex;
-            gap: 8px;
-
-            padding: 12px;
-
-            border-top: 1px solid var(--border);
-        }
-
-        #maxInput {
-            flex: 1;
-
-            min-width: 0;
-
-            padding: 12px;
-
-            color: white;
-            background: #070a10;
-
-            border: 1px solid var(--border);
-            border-radius: 9px;
-
-            outline: none;
-        }
-
-        #maxInput:focus {
-            border-color: var(--blue);
-        }
-
-        .send-button {
-            padding: 0 18px;
-
-            border: 0;
-            border-radius: 9px;
-
-            color: white;
-            background: var(--blue);
-        }
-
-        .max-side {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        /* ================================
-           FILES
-           ================================ */
-
-        .file-list {
-            display: grid;
-            gap: 9px;
-        }
-
-        .file-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-
-            padding: 14px;
-
-            border: 1px solid var(--border);
-            border-radius: 11px;
-
-            background: var(--panel);
-        }
-
-        .file-item strong {
-            display: block;
-        }
-
-        .file-item span {
-            display: block;
-
-            margin-top: 4px;
-
-            color: var(--muted);
-            font-size: 11px;
-        }
-
-        .file-remove {
-            padding: 7px 10px;
-
-            color: #ff7187;
-            background: transparent;
-
-            border: 1px solid rgba(255, 85, 112, 0.2);
-            border-radius: 7px;
-        }
-
-        .empty-state {
-            padding: 50px 20px;
-
-            color: var(--muted);
-
-            border: 1px dashed var(--border);
-            border-radius: 13px;
-
-            text-align: center;
-        }
-
-        /* ================================
-           ACTIVITY
-           ================================ */
-
-        .activity-list {
-            display: grid;
-            gap: 8px;
-        }
-
-        .activity-item {
-            padding: 14px;
-
-            border: 1px solid var(--border);
-            border-radius: 10px;
-
-            background: var(--panel);
-        }
-
-        .activity-item span {
-            display: block;
-
-            margin-top: 4px;
-
-            color: var(--muted);
-            font-size: 11px;
-        }
-
-        /* ================================
-           PROJECTS
-           ================================ */
-
-        .project-empty {
-            padding: 70px 20px;
-
-            border: 1px dashed var(--border);
-            border-radius: 15px;
-
-            text-align: center;
-        }
-
-        .project-empty h3 {
-            font-size: 18px;
-        }
-
-        .project-empty p {
-            margin-top: 7px;
-
-            color: var(--muted);
-        }
-
-        /* ================================
-           TOOLS
-           ================================ */
-
-        .tool-card {
-            cursor: pointer;
-
-            transition:
-                border-color 0.15s ease,
-                transform 0.15s ease;
-        }
-
-        .tool-card:hover {
-            transform: translateY(-2px);
-            border-color: var(--border-bright);
-        }
-
-        /* ================================
-           MOBILE
-           ================================ */
-
-        @media (max-width: 850px) {
-            .app-shell {
-                grid-template-columns: 1fr;
-            }
-
-            .sidebar {
-                position: fixed;
-                z-index: 1000;
-
-                left: 0;
-                right: 0;
-                bottom: 0;
-                top: auto;
-
-                height: auto;
-
-                padding: 8px;
-
-                border-right: 0;
-                border-top: 1px solid var(--border);
-            }
-
-            .brand,
-            .sidebar-bottom {
-                display: none;
-            }
-
-            .nav {
-                flex-direction: row;
-                overflow-x: auto;
-            }
-
-            .nav-button {
-                flex: 0 0 auto;
-                width: auto;
-            }
-
-            .nav-button span:last-child {
-                display: none;
-            }
-
-            .content {
-                padding: 18px;
-                padding-bottom: 90px;
-            }
-
-            .topbar {
-                padding: 0 18px;
-            }
-
-            .max-shell {
-                grid-template-columns: 1fr;
-            }
-
-            .max-side {
-                display: none;
-            }
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Waypoint</title>
+
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#05070c">
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg: #05070c;
+      --panel: #0a0e16;
+      --panel-2: #0d121c;
+      --border: rgba(70, 150, 255, 0.14);
+      --border-strong: rgba(70, 150, 255, 0.3);
+      --blue: #268cff;
+      --blue-bright: #55a9ff;
+      --text: #edf5ff;
+      --muted: #8492a8;
+      --danger: #ff5f6d;
+      --success: #40e89a;
+    }
+
+    body {
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 70% 15%, rgba(30, 110, 255, 0.09), transparent 30%),
+        radial-gradient(circle at 20% 80%, rgba(20, 80, 180, 0.06), transparent 35%),
+        var(--bg);
+      color: var(--text);
+      font-family: Inter, Arial, sans-serif;
+      overflow-x: hidden;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    /* =========================
+       BOOT SCREEN
+    ========================= */
+
+    #bootScreen {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #05070c;
+      transition: opacity 0.35s ease, visibility 0.35s ease;
+    }
+
+    #bootScreen.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .boot {
+      width: min(420px, 88vw);
+      text-align: center;
+    }
+
+    .boot-logo {
+      font-size: 42px;
+      font-weight: 800;
+      letter-spacing: 8px;
+      color: white;
+      margin-bottom: 10px;
+    }
+
+    .boot-sub {
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      margin-bottom: 28px;
+    }
+
+    .boot-line {
+      height: 2px;
+      width: 100%;
+      background: rgba(255,255,255,0.06);
+      overflow: hidden;
+      border-radius: 10px;
+    }
+
+    .boot-line::after {
+      content: "";
+      display: block;
+      width: 40%;
+      height: 100%;
+      background: var(--blue);
+      box-shadow: 0 0 18px var(--blue);
+      animation: bootLoad 1.1s infinite ease-in-out;
+    }
+
+    @keyframes bootLoad {
+      0% {
+        transform: translateX(-120%);
+      }
+      100% {
+        transform: translateX(350%);
+      }
+    }
+
+    /* =========================
+       LOGIN
+    ========================= */
+
+    #loginScreen {
+      display: none;
+      min-height: 100vh;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .login-box {
+      width: min(420px, 100%);
+      padding: 36px;
+      background: rgba(10, 14, 22, 0.86);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      box-shadow:
+        0 30px 100px rgba(0,0,0,0.45),
+        0 0 70px rgba(38,140,255,0.06);
+      backdrop-filter: blur(20px);
+    }
+
+    .login-title {
+      font-size: 30px;
+      font-weight: 800;
+      letter-spacing: 4px;
+      margin-bottom: 7px;
+    }
+
+    .login-sub {
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 30px;
+    }
+
+    .field {
+      margin-bottom: 15px;
+    }
+
+    .field label {
+      display: block;
+      color: #9ba9bc;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1.4px;
+      margin-bottom: 7px;
+    }
+
+    .field input {
+      width: 100%;
+      padding: 13px 14px;
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      outline: none;
+      color: white;
+      background: rgba(255,255,255,0.025);
+    }
+
+    .field input:focus {
+      border-color: var(--border-strong);
+      box-shadow: 0 0 0 3px rgba(38,140,255,0.07);
+    }
+
+    .login-button {
+      width: 100%;
+      border: 0;
+      border-radius: 11px;
+      padding: 13px;
+      margin-top: 5px;
+      color: white;
+      font-weight: 700;
+      background: linear-gradient(135deg, #1674dc, #319cff);
+      box-shadow: 0 10px 30px rgba(38,140,255,0.18);
+    }
+
+    .login-error {
+      display: none;
+      color: var(--danger);
+      font-size: 12px;
+      margin-top: 13px;
+    }
+
+    /* =========================
+       APP
+    ========================= */
+
+    #app {
+      display: none;
+      min-height: 100vh;
+    }
+
+    .app-shell {
+      display: grid;
+      grid-template-columns: 235px 1fr;
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      position: fixed;
+      inset: 0 auto 0 0;
+      width: 235px;
+      padding: 24px 15px;
+      border-right: 1px solid var(--border);
+      background: rgba(5,7,12,0.82);
+      backdrop-filter: blur(18px);
+    }
+
+    .brand {
+      padding: 4px 12px 28px;
+    }
+
+    .brand-name {
+      font-weight: 800;
+      letter-spacing: 3px;
+      font-size: 19px;
+    }
+
+    .brand-status {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      margin-top: 7px;
+      color: var(--muted);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--success);
+      box-shadow: 0 0 10px var(--success);
+    }
+
+    .nav-label {
+      padding: 0 12px 9px;
+      color: #566174;
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+
+    .nav-button {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      border: 1px solid transparent;
+      border-radius: 10px;
+      background: transparent;
+      color: #8996a9;
+      padding: 11px 12px;
+      margin-bottom: 4px;
+      text-align: left;
+      transition: 0.2s;
+    }
+
+    .nav-button:hover,
+    .nav-button.active {
+      color: white;
+      background: rgba(38,140,255,0.08);
+      border-color: rgba(38,140,255,0.13);
+    }
+
+    .nav-icon {
+      width: 20px;
+      text-align: center;
+      color: #6f7e92;
+    }
+
+    .nav-button.active .nav-icon {
+      color: var(--blue-bright);
+    }
+
+    .sidebar-bottom {
+      position: absolute;
+      left: 15px;
+      right: 15px;
+      bottom: 20px;
+    }
+
+    .logout {
+      color: #778396;
+    }
+
+    .main {
+      grid-column: 2;
+      min-width: 0;
+      padding: 28px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      margin-bottom: 28px;
+    }
+
+    .page-title {
+      font-size: 27px;
+      font-weight: 750;
+      letter-spacing: -0.5px;
+    }
+
+    .page-sub {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 5px;
+    }
+
+    .top-time {
+      text-align: right;
+    }
+
+    .top-clock {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: 1px;
+    }
+
+    .top-date {
+      color: var(--muted);
+      font-size: 10px;
+      margin-top: 3px;
+    }
+
+    /* =========================
+       DASHBOARD
+    ========================= */
+
+    .section {
+      display: none;
+    }
+
+    .section.active {
+      display: block;
+    }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      padding: 28px;
+      margin-bottom: 17px;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background:
+        linear-gradient(110deg, rgba(25,86,160,0.13), rgba(10,14,22,0.7));
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      width: 250px;
+      height: 250px;
+      right: -90px;
+      top: -100px;
+      border-radius: 50%;
+      background: rgba(38,140,255,0.08);
+      filter: blur(35px);
+    }
+
+    .hero-kicker {
+      color: var(--blue-bright);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 8px;
+    }
+
+    .hero-title {
+      font-size: clamp(27px, 4vw, 42px);
+      font-weight: 800;
+      letter-spacing: -1.5px;
+    }
+
+    .hero-text {
+      color: var(--muted);
+      max-width: 650px;
+      line-height: 1.6;
+      margin-top: 8px;
+      font-size: 13px;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 13px;
+      margin-bottom: 17px;
+    }
+
+    .stat {
+      padding: 20px;
+      border: 1px solid var(--border);
+      border-radius: 15px;
+      background: rgba(10,14,22,0.7);
+    }
+
+    .stat-label {
+      color: #657287;
+      text-transform: uppercase;
+      font-size: 9px;
+      letter-spacing: 1.6px;
+      margin-bottom: 12px;
+    }
+
+    .stat-value {
+      font-size: 25px;
+      font-weight: 750;
+    }
+
+    .stat-small {
+      color: var(--muted);
+      font-size: 10px;
+      margin-top: 5px;
+    }
+
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr;
+      gap: 17px;
+    }
+
+    .panel {
+      border: 1px solid var(--border);
+      border-radius: 17px;
+      background: rgba(10,14,22,0.72);
+      overflow: hidden;
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 17px 19px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .panel-title {
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .panel-action {
+      color: var(--blue-bright);
+      border: 0;
+      background: transparent;
+      font-size: 11px;
+    }
+
+    .panel-body {
+      padding: 19px;
+    }
+
+    .quick-actions {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+
+    .quick {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: rgba(255,255,255,0.015);
+      color: #b6c1d0;
+      padding: 17px;
+      text-align: left;
+      transition: 0.2s;
+    }
+
+    .quick:hover {
+      border-color: var(--border-strong);
+      background: rgba(38,140,255,0.055);
+      transform: translateY(-1px);
+    }
+
+    .quick-icon {
+      font-size: 18px;
+      margin-bottom: 9px;
+    }
+
+    .quick-name {
+      color: white;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .quick-desc {
+      margin-top: 4px;
+      font-size: 10px;
+      color: var(--muted);
+    }
+
+    .activity-empty {
+      color: var(--muted);
+      font-size: 12px;
+      padding: 12px 0;
+    }
+
+    .activity-item {
+      padding: 11px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      font-size: 11px;
+      color: #a8b3c3;
+    }
+
+    .activity-item:last-child {
+      border-bottom: 0;
+    }
+
+    /* =========================
+       MAX
+    ========================= */
+
+    .max-panel {
+      height: calc(100vh - 135px);
+      min-height: 500px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .max-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+    }
+
+    .message {
+      max-width: 750px;
+      margin-bottom: 14px;
+      padding: 13px 15px;
+      border-radius: 13px;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .message.max {
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.025);
+    }
+
+    .message.user {
+      margin-left: auto;
+      background: rgba(38,140,255,0.1);
+      border: 1px solid rgba(38,140,255,0.16);
+    }
+
+    .max-input {
+      display: flex;
+      gap: 9px;
+      padding: 15px;
+      border-top: 1px solid var(--border);
+    }
+
+    .max-input input {
+      flex: 1;
+      min-width: 0;
+      padding: 12px 14px;
+      color: white;
+      background: rgba(255,255,255,0.025);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      outline: none;
+    }
+
+    .send-button {
+      border: 0;
+      border-radius: 10px;
+      padding: 0 19px;
+      color: white;
+      background: #1674dc;
+      font-weight: 700;
+    }
+
+    /* =========================
+       EMPTY PANELS
+    ========================= */
+
+    .empty {
+      padding: 70px 20px;
+      text-align: center;
+      border: 1px dashed var(--border);
+      border-radius: 15px;
+      color: var(--muted);
+    }
+
+    .empty-icon {
+      font-size: 30px;
+      margin-bottom: 12px;
+    }
+
+    .empty-title {
+      color: white;
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .empty-text {
+      font-size: 12px;
+    }
+
+    /* =========================
+       RESPONSIVE
+    ========================= */
+
+    @media (max-width: 1000px) {
+      .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .app-shell {
+        display: block;
+      }
+
+      .sidebar {
+        position: fixed;
+        top: auto;
+        width: 100%;
+        height: 67px;
+        padding: 7px;
+        display: flex;
+        z-index: 50;
+        border-right: 0;
+        border-top: 1px solid var(--border);
+      }
+
+      .brand,
+      .nav-label,
+      .sidebar-bottom {
+        display: none;
+      }
+
+      .nav-button {
+        flex: 1;
+        justify-content: center;
+        padding: 8px 4px;
+        margin: 0 2px;
+        font-size: 9px;
+      }
+
+      .nav-icon {
+        display: none;
+      }
+
+      .main {
+        padding: 17px;
+        padding-bottom: 85px;
+      }
+
+      .topbar {
+        align-items: flex-start;
+      }
+
+      .top-time {
+        display: none;
+      }
+
+      .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .quick-actions {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
 </head>
 
 <body>
 
-<!-- =====================================================
-     LOGIN
-     ===================================================== -->
-
-<div id="loginScreen">
-    <div class="login-card">
-
-        <div class="login-logo">
-            WAYPOINT
-        </div>
-
-        <div class="login-subtitle">
-            Personal command center
-        </div>
-
-        <form id="loginForm">
-
-            <div class="field">
-                <label>Username</label>
-
-                <input
-                    id="username"
-                    type="text"
-                    autocomplete="username"
-                    required
-                >
-            </div>
-
-            <div class="field">
-                <label>Password</label>
-
-                <input
-                    id="password"
-                    type="password"
-                    autocomplete="current-password"
-                    required
-                >
-            </div>
-
-            <button
-                class="primary-button"
-                type="submit"
-            >
-                Enter Waypoint
-            </button>
-
-            <div id="loginError"></div>
-
-        </form>
+  <!-- BOOT SCREEN -->
+  <div id="bootScreen">
+    <div class="boot">
+      <div class="boot-logo">WAYPOINT</div>
+      <div class="boot-sub">Initialising command system</div>
+      <div class="boot-line"></div>
     </div>
-</div>
+  </div>
 
+  <!-- LOGIN -->
+  <section id="loginScreen">
+    <div class="login-box">
+      <div class="login-title">WAYPOINT</div>
+      <div class="login-sub">Personal command system</div>
 
-<!-- =====================================================
-     APP
-     ===================================================== -->
+      <form id="loginForm">
+        <div class="field">
+          <label>Identity</label>
+          <input
+            id="username"
+            type="text"
+            autocomplete="username"
+            placeholder="Username"
+            required
+          >
+        </div>
 
-<div id="app">
+        <div class="field">
+          <label>Passcode</label>
+          <input
+            id="password"
+            type="password"
+            autocomplete="current-password"
+            placeholder="Passcode"
+            required
+          >
+        </div>
 
+        <button class="login-button" type="submit">
+          Enter Waypoint
+        </button>
+
+        <div id="loginError" class="login-error"></div>
+      </form>
+    </div>
+  </section>
+
+  <!-- APP -->
+  <div id="app">
     <div class="app-shell">
 
-        <!-- SIDEBAR -->
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-name">WAYPOINT</div>
+          <div class="brand-status">
+            <span class="status-dot"></span>
+            System online
+          </div>
+        </div>
 
-        <aside class="sidebar">
+        <div class="nav-label">Command</div>
 
-            <div class="brand">
-                <div class="brand-name">
-                    WAYPOINT
-                </div>
+        <button class="nav-button active" data-section="overview">
+          <span class="nav-icon">⌂</span>
+          Overview
+        </button>
 
-                <div class="brand-status">
-                    <span class="status-dot"></span>
-                    SYSTEM ONLINE
-                </div>
+        <button class="nav-button" data-section="projects">
+          <span class="nav-icon">◇</span>
+          Projects
+        </button>
+
+        <button class="nav-button" data-section="files">
+          <span class="nav-icon">□</span>
+          Files
+        </button>
+
+        <button class="nav-button" data-section="max">
+          <span class="nav-icon">M</span>
+          MAX
+        </button>
+
+        <button class="nav-button" data-section="system">
+          <span class="nav-icon">◉</span>
+          System
+        </button>
+
+        <button class="nav-button" data-section="activity">
+          <span class="nav-icon">≡</span>
+          Activity
+        </button>
+
+        <div class="sidebar-bottom">
+          <button class="nav-button logout" id="logoutButton">
+            <span class="nav-icon">↪</span>
+            Sign out
+          </button>
+        </div>
+      </aside>
+
+      <main class="main">
+
+        <header class="topbar">
+          <div>
+            <div id="pageTitle" class="page-title">Overview</div>
+            <div id="pageSub" class="page-sub">
+              Waypoint command centre
+            </div>
+          </div>
+
+          <div class="top-time">
+            <div id="topClock" class="top-clock">--:--:--</div>
+            <div id="topDate" class="top-date">Loading date...</div>
+          </div>
+        </header>
+
+        <!-- OVERVIEW -->
+        <section id="section-overview" class="section active">
+
+          <div class="hero">
+            <div class="hero-kicker">Waypoint command centre</div>
+            <div class="hero-title">Good to see you, Sir.</div>
+            <div class="hero-text">
+              Your personal digital headquarters. Projects, files, system
+              status and MAX are all being brought together here.
+            </div>
+          </div>
+
+          <div class="stats-grid">
+
+            <div class="stat">
+              <div class="stat-label">Local time</div>
+              <div id="statTime" class="stat-value">--:--</div>
+              <div class="stat-small">United Kingdom</div>
             </div>
 
-            <nav class="nav">
-
-                <button
-                    class="nav-button active"
-                    data-section="overview"
-                >
-                    <span class="nav-icon">⌂</span>
-                    <span>Overview</span>
-                </button>
-
-                <button
-                    class="nav-button"
-                    data-section="projects"
-                >
-                    <span class="nav-icon">◆</span>
-                    <span>Projects</span>
-                </button>
-
-                <button
-                    class="nav-button"
-                    data-section="files"
-                >
-                    <span class="nav-icon">□</span>
-                    <span>Files</span>
-                </button>
-
-                <button
-                    class="nav-button"
-                    data-section="max"
-                >
-                    <span class="nav-icon">M</span>
-                    <span>MAX</span>
-                </button>
-
-                <button
-                    class="nav-button"
-                    data-section="system"
-                >
-                    <span class="nav-icon">◉</span>
-                    <span>System</span>
-                </button>
-
-                <button
-                    class="nav-button"
-                    data-section="activity"
-                >
-                    <span class="nav-icon">↻</span>
-                    <span>Activity</span>
-                </button>
-
-                <button
-                    class="nav-button"
-                    data-section="tools"
-                >
-                    <span class="nav-icon">+</span>
-                    <span>Tools</span>
-                </button>
-
-            </nav>
-
-            <div class="sidebar-bottom">
-
-                <div class="voice-card">
-
-                    <div class="voice-title">
-                        MAX VOICE
-                    </div>
-
-                    <div
-                        class="voice-status"
-                        id="voiceStatus"
-                    >
-                        Off
-                    </div>
-
-                    <button
-                        class="voice-button"
-                        id="voiceButton"
-                    >
-                        Activate Voice
-                    </button>
-
-                </div>
-
+            <div class="stat">
+              <div class="stat-label">Projects</div>
+              <div id="statProjects" class="stat-value">0</div>
+              <div class="stat-small">Stored projects</div>
             </div>
 
-        </aside>
-
-
-        <!-- MAIN -->
-
-        <main class="main">
-
-            <header class="topbar">
-
-                <div class="page-heading">
-
-                    <h1 id="sectionTitle">
-                        Overview
-                    </h1>
-
-                    <p id="sectionSubtitle">
-                        Waypoint command center
-                    </p>
-
-                </div>
-
-                <div class="clock">
-
-                    <div
-                        class="clock-time"
-                        id="clockTime"
-                    >
-                        --:--
-                    </div>
-
-                    <div
-                        class="clock-date"
-                        id="clockDate"
-                    >
-                        --
-                    </div>
-
-                </div>
-
-            </header>
-
-
-            <div class="content">
-
-
-                <!-- OVERVIEW -->
-
-                <section
-                    class="waypoint-section active"
-                    data-section="overview"
-                >
-
-                    <div class="hero">
-
-                        <h2>
-                            Welcome back, Sir.
-                        </h2>
-
-                        <p>
-                            Waypoint is online.
-                            Your workspace, files,
-                            projects and MAX intelligence
-                            are accessible from one command center.
-                        </p>
-
-                    </div>
-
-                    <div class="grid">
-
-                        <div class="card">
-                            <div class="card-title">
-                                System
-                            </div>
-
-                            <div class="card-value">
-                                Online
-                            </div>
-
-                            <div class="card-small">
-                                Waypoint operational
-                            </div>
-                        </div>
-
-                        <div class="card">
-                            <div class="card-title">
-                                Intelligence
-                            </div>
-
-                            <div class="card-value">
-                                MAX
-                            </div>
-
-                            <div class="card-small">
-                                Gemini connection
-                            </div>
-                        </div>
-
-                        <div class="card">
-                            <div class="card-title">
-                                Projects
-                            </div>
-
-                            <div
-                                class="card-value"
-                                id="projectCount"
-                            >
-                                0
-                            </div>
-
-                            <div class="card-small">
-                                User-created projects
-                            </div>
-                        </div>
-
-                        <div class="card">
-                            <div class="card-title">
-                                Voice
-                            </div>
-
-                            <div
-                                class="card-value"
-                                id="overviewVoice"
-                            >
-                                Off
-                            </div>
-
-                            <div class="card-small">
-                                Wake system
-                            </div>
-                        </div>
-
-                    </div>
-
-                </section>
-
-
-                <!-- PROJECTS -->
-
-                <section
-                    class="waypoint-section"
-                    data-section="projects"
-                >
-
-                    <div class="section-header">
-
-                        <div>
-                            <h2>Projects</h2>
-
-                            <p>
-                                Your Waypoint workspace
-                            </p>
-                        </div>
-
-                        <button
-                            class="action-button"
-                            id="createProjectButton"
-                        >
-                            + Create Project
-                        </button>
-
-                    </div>
-
-                    <div id="projectsContainer">
-
-                        <div class="project-empty">
-
-                            <h3>
-                                No projects yet
-                            </h3>
-
-                            <p>
-                                Create your first Waypoint project.
-                            </p>
-
-                        </div>
-
-                    </div>
-
-                </section>
-
-
-                <!-- FILES -->
-
-                <section
-                    class="waypoint-section"
-                    data-section="files"
-                >
-
-                    <div class="section-header">
-
-                        <div>
-                            <h2>Files</h2>
-
-                            <p>
-                                Waypoint file system
-                            </p>
-                        </div>
-
-                        <button
-                            class="action-button"
-                            id="addFilesButton"
-                        >
-                            + Add Files
-                        </button>
-
-                    </div>
-
-                    <input
-                        id="fileInput"
-                        type="file"
-                        multiple
-                        hidden
-                    >
-
-                    <div
-                        id="fileEmpty"
-                        class="empty-state"
-                    >
-                        No files added yet.
-                        Permanent cloud storage will be connected next.
-                    </div>
-
-                    <div
-                        id="fileList"
-                        class="file-list"
-                    ></div>
-
-                </section>
-
-
-                <!-- MAX -->
-
-                <section
-                    class="waypoint-section"
-                    data-section="max"
-                >
-
-                    <div class="section-header">
-
-                        <div>
-                            <h2>MAX</h2>
-
-                            <p>
-                                Waypoint intelligence
-                            </p>
-                        </div>
-
-                    </div>
-
-                    <div class="max-shell">
-
-                        <div class="max-chat">
-
-                            <div class="max-header">
-
-                                <div class="max-name">
-                                    MAX
-                                </div>
-
-                                <div
-                                    class="max-online"
-                                    id="maxStatus"
-                                >
-                                    Online
-                                </div>
-
-                            </div>
-
-                            <div id="maxMessages">
-
-                                <div class="max-message max">
-                                    Good to see you, Sir.
-                                    Waypoint is ready.
-                                </div>
-
-                            </div>
-
-                            <form
-                                class="max-input-area"
-                                id="maxForm"
-                            >
-
-                                <input
-                                    id="maxInput"
-                                    type="text"
-                                    placeholder="Command MAX..."
-                                    autocomplete="off"
-                                >
-
-                                <button
-                                    class="send-button"
-                                    type="submit"
-                                >
-                                    Send
-                                </button>
-
-                            </form>
-
-                        </div>
-
-                        <div class="max-side">
-
-                            <div class="card">
-
-                                <div class="card-title">
-                                    Voice Wake
-                                </div>
-
-                                <div
-                                    class="card-value"
-                                    id="maxVoiceSide"
-                                >
-                                    Off
-                                </div>
-
-                                <div class="card-small">
-                                    Say "MAX" or "Hey MAX"
-                                </div>
-
-                            </div>
-
-                            <div class="card">
-
-                                <div class="card-title">
-                                    Model
-                                </div>
-
-                                <div class="card-value">
-                                    Gemini
-                                </div>
-
-                                <div class="card-small">
-                                    Server-side API
-                                </div>
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-                </section>
-
-
-                <!-- SYSTEM -->
-
-                <section
-                    class="waypoint-section"
-                    data-section="system"
-                >
-
-                    <div class="section-header">
-
-                        <div>
-                            <h2>System</h2>
-
-                            <p>
-                                Waypoint infrastructure
-                            </p>
-                        </div>
-
-                    </div>
-
-                    <div class="grid">
-
-                        <div class="card">
-                            <div class="card-title">
-                                Frontend
-                            </div>
-
-                            <div class="card-value">
-                                Online
-                            </div>
-
-                            <div class="card-small">
-                                index.html
-                            </div>
-                        </div>
-
-                        <div class="card">
-                            <div class="card-title">
-                                API
-                            </div>
-
-                            <div
-                                class="card-value"
-                                id="apiStatus"
-                            >
-                                Checking
-                            </div>
-
-                            <div class="card-small">
-                                Vercel Functions
-                            </div>
-                        </div>
-
-                        <div class="card">
-                            <div class="card-title">
-                                Database
-                            </div>
-
-                            <div class="card-value">
-                                Pending
-                            </div>
-
-                            <div class="card-small">
-                                Backend storage coming next
-                            </div>
-                        </div>
-
-                        <div class="card">
-                            <div class="card-title">
-                                File Storage
-                            </div>
-
-                            <div class="card-value">
-                                Pending
-                            </div>
-
-                            <div class="card-small">
-                                Permanent storage coming next
-                            </div>
-                        </div>
-
-                    </div>
-
-                </section>
-
-
-                <!-- ACTIVITY -->
-
-                <section
-                    class="waypoint-section"
-                    data-section="activity"
-                >
-
-                    <div class="section-header">
-
-                        <div>
-                            <h2>Activity</h2>
-
-                            <p>
-                                Recent Waypoint events
-                            </p>
-                        </div>
-
-                        <button
-                            class="action-button"
-                            id="clearActivityButton"
-                        >
-                            Clear
-                        </button>
-
-                    </div>
-
-                    <div
-                        id="activityList"
-                        class="activity-list"
-                    >
-
-                        <div class="empty-state">
-                            No activity yet.
-                        </div>
-
-                    </div>
-
-                </section>
-
-
-                <!-- TOOLS -->
-
-                <section
-                    class="waypoint-section"
-                    data-section="tools"
-                >
-
-                    <div class="section-header">
-
-                        <div>
-                            <h2>Tools</h2>
-
-                            <p>
-                                Waypoint utilities
-                            </p>
-                        </div>
-
-                    </div>
-
-                    <div class="grid">
-
-                        <div
-                            class="card tool-card"
-                            id="toolFiles"
-                        >
-                            <div class="card-title">
-                                File Manager
-                            </div>
-
-                            <div class="card-value">
-                                Files
-                            </div>
-
-                            <div class="card-small">
-                                Open Waypoint files
-                            </div>
-                        </div>
-
-                        <div
-                            class="card tool-card"
-                            id="toolMAX"
-                        >
-                            <div class="card-title">
-                                Intelligence
-                            </div>
-
-                            <div class="card-value">
-                                MAX
-                            </div>
-
-                            <div class="card-small">
-                                Open MAX command interface
-                            </div>
-                        </div>
-
-                        <div
-                            class="card tool-card"
-                            id="toolVoice"
-                        >
-                            <div class="card-title">
-                                Voice
-                            </div>
-
-                            <div class="card-value">
-                                Wake MAX
-                            </div>
-
-                            <div class="card-small">
-                                Toggle voice control
-                            </div>
-                        </div>
-
-                    </div>
-
-                </section>
-
+            <div class="stat">
+              <div class="stat-label">Files</div>
+              <div id="statFiles" class="stat-value">0</div>
+              <div class="stat-small">Workspace files</div>
             </div>
 
-        </main>
+            <div class="stat">
+              <div class="stat-label">MAX</div>
+              <div id="statMax" class="stat-value">READY</div>
+              <div class="stat-small">Intelligence system</div>
+            </div>
 
+          </div>
+
+          <div class="dashboard-grid">
+
+            <div class="panel">
+              <div class="panel-header">
+                <div class="panel-title">Quick access</div>
+              </div>
+
+              <div class="panel-body">
+                <div class="quick-actions">
+
+                  <button class="quick" data-open="files">
+                    <div class="quick-icon">□</div>
+                    <div class="quick-name">Files</div>
+                    <div class="quick-desc">
+                      Access your Waypoint workspace
+                    </div>
+                  </button>
+
+                  <button class="quick" data-open="projects">
+                    <div class="quick-icon">◇</div>
+                    <div class="quick-name">Projects</div>
+                    <div class="quick-desc">
+                      Open your active projects
+                    </div>
+                  </button>
+
+                  <button class="quick" data-open="max">
+                    <div class="quick-icon">M</div>
+                    <div class="quick-name">MAX</div>
+                    <div class="quick-desc">
+                      Open your personal intelligence
+                    </div>
+                  </button>
+
+                  <button class="quick" data-open="system">
+                    <div class="quick-icon">◉</div>
+                    <div class="quick-name">System</div>
+                    <div class="quick-desc">
+                      Check Waypoint health
+                    </div>
+                  </button>
+
+                </div>
+              </div>
+            </div>
+
+            <div class="panel">
+              <div class="panel-header">
+                <div class="panel-title">Recent activity</div>
+                <button class="panel-action" data-open="activity">
+                  View all
+                </button>
+              </div>
+
+              <div id="dashboardActivity" class="panel-body">
+                <div class="activity-empty">
+                  No activity recorded yet.
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- PROJECTS -->
+        <section id="section-projects" class="section">
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title">Projects</div>
+              <button class="panel-action" id="createProjectButton">
+                + Create
+              </button>
+            </div>
+
+            <div class="panel-body">
+              <div id="projectsEmpty" class="empty">
+                <div class="empty-icon">◇</div>
+                <div class="empty-title">No projects yet</div>
+                <div class="empty-text">
+                  Your projects will live here permanently once the database
+                  layer is connected.
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- FILES -->
+        <section id="section-files" class="section">
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title">Files</div>
+              <button class="panel-action" id="addFilesButton">
+                + Add files
+              </button>
+            </div>
+
+            <div class="panel-body">
+              <input
+                id="filePicker"
+                type="file"
+                multiple
+                hidden
+              >
+
+              <div id="filesEmpty" class="empty">
+                <div class="empty-icon">□</div>
+                <div class="empty-title">Workspace is empty</div>
+                <div class="empty-text">
+                  Permanent private storage will be connected here.
+                </div>
+              </div>
+
+              <div id="fileList"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- MAX -->
+        <section id="section-max" class="section">
+          <div class="panel max-panel">
+
+            <div class="panel-header">
+              <div>
+                <div class="panel-title">MAX</div>
+                <div style="font-size:10px;color:#687589;margin-top:3px;">
+                  Waypoint personal intelligence
+                </div>
+              </div>
+
+              <div style="font-size:10px;color:#40e89a;">
+                ● READY
+              </div>
+            </div>
+
+            <div id="maxMessages" class="max-messages">
+              <div class="message max">
+                Good to see you, Sir. MAX is online.
+              </div>
+            </div>
+
+            <div class="max-input">
+              <input
+                id="maxInput"
+                type="text"
+                placeholder="Talk to MAX..."
+                autocomplete="off"
+              >
+
+              <button id="sendMaxButton" class="send-button">
+                Send
+              </button>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- SYSTEM -->
+        <section id="section-system" class="section">
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title">System status</div>
+            </div>
+
+            <div class="panel-body">
+
+              <div class="stats-grid">
+
+                <div class="stat">
+                  <div class="stat-label">Waypoint</div>
+                  <div id="systemWaypoint" class="stat-value">
+                    ONLINE
+                  </div>
+                  <div class="stat-small">
+                    Frontend
+                  </div>
+                </div>
+
+                <div class="stat">
+                  <div class="stat-label">API</div>
+                  <div id="systemAPI" class="stat-value">
+                    CHECKING
+                  </div>
+                  <div class="stat-small">
+                    Backend
+                  </div>
+                </div>
+
+                <div class="stat">
+                  <div class="stat-label">MAX</div>
+                  <div class="stat-value">
+                    GEMINI
+                  </div>
+                  <div class="stat-small">
+                    Multi-model fallback
+                  </div>
+                </div>
+
+                <div class="stat">
+                  <div class="stat-label">Voice</div>
+                  <div id="systemVoice" class="stat-value">
+                    READY
+                  </div>
+                  <div class="stat-small">
+                    Browser voice system
+                  </div>
+                </div>
+
+              </div>
+
+            </div>
+          </div>
+        </section>
+
+        <!-- ACTIVITY -->
+        <section id="section-activity" class="section">
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title">Activity</div>
+            </div>
+
+            <div id="activityList" class="panel-body">
+              <div class="activity-empty">
+                No activity recorded yet.
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </main>
     </div>
+  </div>
 
-</div>
+  <script>
+    let voiceActive = false;
+    let recognition = null;
+    let voiceCommandTimeout = null;
 
+    const activities = [];
 
-<script>
-/* =========================================================
-   WAYPOINT CORE
-   ========================================================= */
+    const sectionNames = {
+      overview: ["Overview", "Waypoint command centre"],
+      projects: ["Projects", "Your Waypoint projects"],
+      files: ["Files", "Your Waypoint workspace"],
+      max: ["MAX", "Personal intelligence"],
+      system: ["System", "Waypoint system status"],
+      activity: ["Activity", "Recent Waypoint events"]
+    };
 
-let recognition = null;
-let voiceActive = false;
-let listeningForCommand = false;
+    /* =========================
+       AUTH
+    ========================= */
 
-let currentSection = "overview";
+    async function checkSession() {
+      try {
+        const response = await fetch("/api/auth/session", {
+          credentials: "include",
+          cache: "no-store"
+        });
 
-const sections = {
-    overview: {
-        title: "Overview",
-        subtitle: "Waypoint command center"
-    },
-
-    projects: {
-        title: "Projects",
-        subtitle: "Your active workspace"
-    },
-
-    files: {
-        title: "Files",
-        subtitle: "Waypoint file system"
-    },
-
-    max: {
-        title: "MAX",
-        subtitle: "Personal system intelligence"
-    },
-
-    system: {
-        title: "System",
-        subtitle: "Waypoint system status"
-    },
-
-    activity: {
-        title: "Activity",
-        subtitle: "Recent Waypoint activity"
-    },
-
-    tools: {
-        title: "Tools",
-        subtitle: "Available Waypoint tools"
-    }
-};
-
-
-/* =========================================================
-   LOGIN / SESSION
-   ========================================================= */
-
-const loginScreen =
-    document.getElementById("loginScreen");
-
-const app =
-    document.getElementById("app");
-
-const loginForm =
-    document.getElementById("loginForm");
-
-const loginError =
-    document.getElementById("loginError");
-
-
-async function checkSession() {
-    try {
-        const response =
-            await fetch("/api/auth/session");
-
-        const data =
-            await response.json();
+        const data = await response.json();
 
         if (data.authenticated) {
-            showApp();
+          showApp();
+        } else {
+          showLogin();
         }
 
-    } catch (error) {
-        console.error(
-            "Session check failed:",
-            error
-        );
+      } catch (error) {
+        console.error(error);
+        showLogin();
+      }
     }
-}
 
+    function showLogin() {
+      document.getElementById("bootScreen").classList.add("hidden");
 
-function showApp() {
-    loginScreen.style.display = "none";
-    app.style.display = "block";
+      const login = document.getElementById("loginScreen");
+      login.style.display = "flex";
 
-    initialiseWaypoint();
-}
+      document.getElementById("app").style.display = "none";
+    }
 
+    function showApp() {
+      document.getElementById("bootScreen").classList.add("hidden");
 
-loginForm.addEventListener(
-    "submit",
-    async event => {
+      document.getElementById("loginScreen").style.display = "none";
+      document.getElementById("app").style.display = "block";
 
+      initialiseWaypoint();
+    }
+
+    document
+      .getElementById("loginForm")
+      .addEventListener("submit", async event => {
         event.preventDefault();
 
-        loginError.textContent = "";
-
         const username =
-            document.getElementById(
-                "username"
-            ).value;
+          document.getElementById("username").value.trim();
 
         const password =
-            document.getElementById(
-                "password"
-            ).value;
+          document.getElementById("password").value;
+
+        const errorBox =
+          document.getElementById("loginError");
+
+        const button =
+          event.target.querySelector("button");
+
+        errorBox.style.display = "none";
+
+        button.disabled = true;
+        button.textContent = "Authenticating...";
 
         try {
+          const response = await fetch("/api/auth/login", {
+            method: "POST",
+            credentials: "include",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              username,
+              password
+            })
+          });
 
-            const response =
-                await fetch(
-                    "/api/auth/login",
-                    {
-                        method: "POST",
+          const data = await response.json();
 
-                        headers: {
-                            "Content-Type":
-                                "application/json"
-                        },
+          if (!response.ok || !data.success) {
+            throw new Error(
+              data.error || "Authentication failed."
+            );
+          }
 
-                        body: JSON.stringify({
-                            username,
-                            password
-                        })
-                    }
-                );
-
-            const data =
-                await response.json();
-
-            if (!response.ok) {
-                throw new Error(
-                    data.error ||
-                    "Login failed."
-                );
-            }
-
-            showApp();
+          showApp();
 
         } catch (error) {
+          errorBox.textContent =
+            error.message || "Authentication failed.";
 
-            loginError.textContent =
-                error.message ||
-                "Authentication failed.";
+          errorBox.style.display = "block";
+
+        } finally {
+          button.disabled = false;
+          button.textContent = "Enter Waypoint";
         }
-    }
-);
-
-
-/* =========================================================
-   CLOCK
-   ========================================================= */
-
-function updateClock() {
-
-    const now = new Date();
-
-    const time =
-        document.getElementById(
-            "clockTime"
-        );
-
-    const date =
-        document.getElementById(
-            "clockDate"
-        );
-
-    if (time) {
-        time.textContent =
-            now.toLocaleTimeString(
-                "en-GB",
-                {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    second: "2-digit"
-                }
-            );
-    }
-
-    if (date) {
-        date.textContent =
-            now.toLocaleDateString(
-                "en-GB",
-                {
-                    weekday: "long",
-                    day: "numeric",
-                    month: "long"
-                }
-            );
-    }
-}
-
-setInterval(
-    updateClock,
-    1000
-);
-
-updateClock();
-
-
-/* =========================================================
-   NAVIGATION
-   ========================================================= */
-
-function openSection(section) {
-
-    if (!sections[section]) return;
-
-    currentSection = section;
+      });
 
     document
-        .querySelectorAll(
-            "[data-section]"
-        )
+      .getElementById("logoutButton")
+      .addEventListener("click", async () => {
+        try {
+          await fetch("/api/auth/logout", {
+            method: "POST",
+            credentials: "include"
+          });
+        } catch (error) {
+          console.error(error);
+        }
+
+        location.reload();
+      });
+
+    /* =========================
+       NAVIGATION
+    ========================= */
+
+    function openSection(section) {
+      document
+        .querySelectorAll(".section")
+        .forEach(element => {
+          element.classList.remove("active");
+        });
+
+      document
+        .getElementById(`section-${section}`)
+        ?.classList.add("active");
+
+      document
+        .querySelectorAll(".nav-button[data-section]")
         .forEach(button => {
-
-            button.classList.toggle(
-                "active",
-                button.dataset.section === section
-            );
+          button.classList.toggle(
+            "active",
+            button.dataset.section === section
+          );
         });
+
+      const info =
+        sectionNames[section] || sectionNames.overview;
+
+      document.getElementById("pageTitle").textContent = info[0];
+      document.getElementById("pageSub").textContent = info[1];
+
+      if (section === "max") {
+        setTimeout(() => {
+          document.getElementById("maxInput")?.focus();
+        }, 50);
+      }
+    }
 
     document
-        .querySelectorAll(
-            ".waypoint-section"
-        )
-        .forEach(panel => {
-
-            panel.classList.toggle(
-                "active",
-                panel.dataset.section === section
-            );
+      .querySelectorAll(".nav-button[data-section]")
+      .forEach(button => {
+        button.addEventListener("click", () => {
+          openSection(button.dataset.section);
         });
+      });
 
-    document.getElementById(
-        "sectionTitle"
-    ).textContent =
-        sections[section].title;
+    document
+      .querySelectorAll("[data-open]")
+      .forEach(button => {
+        button.addEventListener("click", () => {
+          openSection(button.dataset.open);
+        });
+      });
 
-    document.getElementById(
-        "sectionSubtitle"
-    ).textContent =
-        sections[section].subtitle;
+    /* =========================
+       CLOCK
+    ========================= */
 
-    addActivity(
-        `Opened ${sections[section].title}`
-    );
-}
+    function updateClock() {
+      const now = new Date();
 
+      const time = now.toLocaleTimeString("en-GB", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit"
+      });
 
-document
-    .querySelectorAll(
-        ".nav-button"
-    )
-    .forEach(button => {
+      const shortTime = now.toLocaleTimeString("en-GB", {
+        hour: "2-digit",
+        minute: "2-digit"
+      });
 
-        button.addEventListener(
-            "click",
-            () => {
-                openSection(
-                    button.dataset.section
-                );
-            }
-        );
-    });
+      const date = now.toLocaleDateString("en-GB", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric"
+      });
 
+      document.getElementById("topClock").textContent = time;
+      document.getElementById("topDate").textContent = date;
+      document.getElementById("statTime").textContent = shortTime;
+    }
 
-/* =========================================================
-   ACTIVITY
-   ========================================================= */
+    /* =========================
+       ACTIVITY
+    ========================= */
 
-const activities = [];
-
-
-function addActivity(message) {
-
-    activities.unshift({
-        message,
+    function addActivity(text) {
+      activities.unshift({
+        text,
         time: new Date()
-    });
+      });
 
-    if (activities.length > 50) {
+      if (activities.length > 8) {
         activities.pop();
+      }
+
+      renderActivity();
     }
 
-    renderActivity();
-}
+    function renderActivity() {
+      const dashboard =
+        document.getElementById("dashboardActivity");
 
+      const full =
+        document.getElementById("activityList");
 
-function renderActivity() {
+      if (!activities.length) {
+        dashboard.innerHTML =
+          '<div class="activity-empty">No activity recorded yet.</div>';
 
-    const container =
-        document.getElementById(
-            "activityList"
-        );
+        full.innerHTML =
+          '<div class="activity-empty">No activity recorded yet.</div>';
 
-    if (!container) return;
+        return;
+      }
 
-    if (!activities.length) {
-
-        container.innerHTML = `
-            <div class="empty-state">
-                No activity yet.
+      const createHTML = list =>
+        list.map(item => `
+          <div class="activity-item">
+            ${escapeHTML(item.text)}
+            <div style="color:#566174;margin-top:3px;">
+              ${item.time.toLocaleTimeString("en-GB")}
             </div>
-        `;
+          </div>
+        `).join("");
 
-        return;
+      dashboard.innerHTML = createHTML(
+        activities.slice(0, 4)
+      );
+
+      full.innerHTML = createHTML(activities);
     }
 
-    container.innerHTML =
-        activities.map(
-            activity => `
-                <div class="activity-item">
-
-                    <strong>
-                        ${escapeHtml(
-                            activity.message
-                        )}
-                    </strong>
-
-                    <span>
-                        ${activity.time.toLocaleTimeString(
-                            "en-GB",
-                            {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                                second: "2-digit"
-                            }
-                        )}
-                    </span>
-
-                </div>
-            `
-        ).join("");
-}
-
-
-document
-    .getElementById(
-        "clearActivityButton"
-    )
-    .addEventListener(
-        "click",
-        () => {
-
-            activities.length = 0;
-
-            renderActivity();
-        }
-    );
-
-
-/* =========================================================
-   FILE UI
-   ========================================================= */
-
-const fileInput =
-    document.getElementById(
-        "fileInput"
-    );
-
-const fileList =
-    document.getElementById(
-        "fileList"
-    );
-
-const fileEmpty =
-    document.getElementById(
-        "fileEmpty"
-    );
-
-let selectedFiles = [];
-
-
-document
-    .getElementById(
-        "addFilesButton"
-    )
-    .addEventListener(
-        "click",
-        () => {
-
-            openSection("files");
-
-            fileInput.click();
-        }
-    );
-
-
-fileInput.addEventListener(
-    "change",
-    event => {
-
-        const files =
-            Array.from(
-                event.target.files || []
-            );
-
-        if (!files.length) return;
-
-        selectedFiles.push(
-            ...files
-        );
-
-        renderFiles();
-
-        addActivity(
-            `${files.length} file${
-                files.length === 1
-                    ? ""
-                    : "s"
-            } selected`
-        );
-
-        speak(
-            files.length === 1
-                ? "File selected, Sir."
-                : `${files.length} files selected, Sir.`
-        );
-
-        fileInput.value = "";
-    }
-);
-
-
-function renderFiles() {
-
-    fileList.innerHTML = "";
-
-    if (!selectedFiles.length) {
-
-        fileEmpty.style.display =
-            "block";
-
-        return;
-    }
-
-    fileEmpty.style.display =
-        "none";
-
-    selectedFiles.forEach(
-        (file, index) => {
-
-            const item =
-                document.createElement(
-                    "div"
-                );
-
-            item.className =
-                "file-item";
-
-            item.innerHTML = `
-                <div>
-                    <strong>
-                        ${escapeHtml(
-                            file.name
-                        )}
-                    </strong>
-
-                    <span>
-                        ${formatFileSize(
-                            file.size
-                        )}
-                    </span>
-                </div>
-
-                <button
-                    class="file-remove"
-                    data-index="${index}"
-                >
-                    Remove
-                </button>
-            `;
-
-            fileList.appendChild(
-                item
-            );
-        }
-    );
-
-    document
-        .querySelectorAll(
-            ".file-remove"
-        )
-        .forEach(button => {
-
-            button.addEventListener(
-                "click",
-                () => {
-
-                    const index =
-                        Number(
-                            button.dataset.index
-                        );
-
-                    selectedFiles.splice(
-                        index,
-                        1
-                    );
-
-                    renderFiles();
-
-                    addActivity(
-                        "File removed"
-                    );
-                }
-            );
-        });
-}
-
-
-function formatFileSize(bytes) {
-
-    if (bytes < 1024) {
-        return `${bytes} B`;
-    }
-
-    if (bytes < 1024 * 1024) {
-        return `${(
-            bytes / 1024
-        ).toFixed(1)} KB`;
-    }
-
-    return `${(
-        bytes /
-        (1024 * 1024)
-    ).toFixed(1)} MB`;
-}
-
-
-function escapeHtml(value) {
-
-    return String(value)
+    function escapeHTML(value) {
+      return String(value)
         .replaceAll("&", "&amp;")
         .replaceAll("<", "&lt;")
         .replaceAll(">", "&gt;")
         .replaceAll('"', "&quot;")
         .replaceAll("'", "&#039;");
-}
-
-
-/* =========================================================
-   MAX
-   ========================================================= */
-
-async function sendCommand(
-    message,
-    speakReply = true
-) {
-
-    if (!message || !message.trim()) {
-        return;
     }
 
-    const cleanMessage =
-        message.trim();
+    /* =========================
+       API STATUS
+    ========================= */
 
-    addActivity(
-        `MAX command: ${cleanMessage}`
-    );
+    async function checkAPI() {
+      const status =
+        document.getElementById("systemAPI");
 
-    document.getElementById(
-        "maxInput"
-    ).value = "";
-
-    setMaxStatus(
-        "Thinking..."
-    );
-
-    displayMaxMessage(
-        "user",
-        cleanMessage
-    );
-
-    try {
-
-        const response =
-            await fetch(
-                "/api/max",
-                {
-                    method: "POST",
-
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
-
-                    body: JSON.stringify({
-                        message:
-                            cleanMessage
-                    })
-                }
-            );
-
-        const data =
-            await response.json();
+      try {
+        const response = await fetch("/api/health", {
+          cache: "no-store"
+        });
 
         if (!response.ok) {
-            throw new Error(
-                data.error ||
-                "MAX request failed"
-            );
+          throw new Error("API offline");
         }
 
-        const reply =
-            data.reply ||
-            "I wasn't able to generate a response, Sir.";
+        status.textContent = "ONLINE";
+        status.style.color = "var(--success)";
 
-        displayMaxMessage(
-            "max",
-            reply
-        );
+      } catch {
+        status.textContent = "OFFLINE";
+        status.style.color = "var(--danger)";
+      }
+    }
 
-        setMaxStatus(
-            "Online"
-        );
+    /* =========================
+       MAX
+    ========================= */
 
-        if (speakReply) {
-            speak(reply);
+    function addMaxMessage(text, type) {
+      const container =
+        document.getElementById("maxMessages");
+
+      const message =
+        document.createElement("div");
+
+      message.className = `message ${type}`;
+      message.textContent = text;
+
+      container.appendChild(message);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    async function sendToMAX(text) {
+      if (!text.trim()) return;
+
+      addMaxMessage(text, "user");
+      addActivity("Message sent to MAX");
+
+      const input =
+        document.getElementById("maxInput");
+
+      input.value = "";
+
+      const loading = document.createElement("div");
+      loading.className = "message max";
+      loading.textContent = "Thinking, Sir...";
+      loading.id = "maxThinking";
+
+      const container =
+        document.getElementById("maxMessages");
+
+      container.appendChild(loading);
+      container.scrollTop = container.scrollHeight;
+
+      try {
+        const response = await fetch("/api/max", {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            message: text
+          })
+        });
+
+        const raw = await response.text();
+
+        let data;
+
+        try {
+          data = JSON.parse(raw);
+        } catch {
+          throw new Error(
+            "MAX returned an invalid server response."
+          );
         }
 
-        return reply;
-
-    } catch (error) {
-
-        console.error(error);
-
-        const message =
-            "I couldn't connect to my intelligence service, Sir.";
-
-        displayMaxMessage(
-            "max",
-            message
-        );
-
-        setMaxStatus(
-            "Connection error"
-        );
-
-        if (speakReply) {
-            speak(message);
+        if (!response.ok || !data.success) {
+          throw new Error(
+            data.error || "MAX failed to respond."
+          );
         }
+
+        document.getElementById("maxThinking")?.remove();
+
+        addMaxMessage(data.reply, "max");
+
+        addActivity(
+          `MAX responded using ${data.model || "Gemini"}`
+        );
+
+        speak(data.reply);
+
+      } catch (error) {
+        document.getElementById("maxThinking")?.remove();
+
+        addMaxMessage(
+          `I'm having trouble reaching the intelligence service right now, Sir. ${error.message}`,
+          "max"
+        );
+
+        addActivity("MAX request failed");
+      }
     }
-}
 
-
-function displayMaxMessage(
-    type,
-    message
-) {
-
-    const container =
-        document.getElementById(
-            "maxMessages"
+    document
+      .getElementById("sendMaxButton")
+      .addEventListener("click", () => {
+        sendToMAX(
+          document.getElementById("maxInput").value
         );
+      });
 
-    const element =
-        document.createElement(
-            "div"
-        );
+    document
+      .getElementById("maxInput")
+      .addEventListener("keydown", event => {
+        if (event.key === "Enter") {
+          event.preventDefault();
 
-    element.className =
-        type === "max"
-            ? "max-message max"
-            : "max-message user";
-
-    element.textContent =
-        message;
-
-    container.appendChild(
-        element
-    );
-
-    container.scrollTop =
-        container.scrollHeight;
-}
-
-
-function setMaxStatus(
-    status
-) {
-
-    document.getElementById(
-        "maxStatus"
-    ).textContent =
-        status;
-}
-
-
-document
-    .getElementById(
-        "maxForm"
-    )
-    .addEventListener(
-        "submit",
-        event => {
-
-            event.preventDefault();
-
-            sendCommand(
-                document.getElementById(
-                    "maxInput"
-                ).value
-            );
+          sendToMAX(
+            document.getElementById("maxInput").value
+          );
         }
-    );
+      });
 
+    /* =========================
+       FILE UI
+    ========================= */
 
-/* =========================================================
-   TEXT TO SPEECH
-   ========================================================= */
+    const filePicker =
+      document.getElementById("filePicker");
 
-let selectedVoice = null;
+    document
+      .getElementById("addFilesButton")
+      .addEventListener("click", () => {
+        filePicker.click();
+      });
 
+    filePicker.addEventListener("change", () => {
+      const files = Array.from(filePicker.files);
 
-function findMaleVoice() {
+      if (!files.length) return;
 
-    if (
-        !("speechSynthesis" in window)
-    ) {
-        return null;
+      document.getElementById("filesEmpty").style.display =
+        "none";
+
+      const list =
+        document.getElementById("fileList");
+
+      files.forEach(file => {
+        const item = document.createElement("div");
+
+        item.className = "activity-item";
+
+        item.innerHTML = `
+          <strong style="color:white;">
+            ${escapeHTML(file.name)}
+          </strong>
+          <div style="color:#566174;margin-top:3px;">
+            ${formatBytes(file.size)}
+          </div>
+        `;
+
+        list.appendChild(item);
+      });
+
+      const current =
+        Number(
+          document.getElementById("statFiles").textContent
+        ) || 0;
+
+      document.getElementById("statFiles").textContent =
+        current + files.length;
+
+      addActivity(
+        `${files.length} file${files.length === 1 ? "" : "s"} selected`
+      );
+
+      /*
+        IMPORTANT:
+        These files are currently only selected in the browser.
+        Permanent backend storage is the next storage step.
+      */
+    });
+
+    function formatBytes(bytes) {
+      if (!bytes) return "0 B";
+
+      const units = ["B", "KB", "MB", "GB"];
+      const index =
+        Math.floor(Math.log(bytes) / Math.log(1024));
+
+      return `${(bytes / Math.pow(1024, index)).toFixed(1)} ${units[index]}`;
     }
 
-    const voices =
-        speechSynthesis.getVoices();
+    /* =========================
+       PROJECT UI
+    ========================= */
 
-    if (!voices.length) {
-        return null;
-    }
+    document
+      .getElementById("createProjectButton")
+      .addEventListener("click", () => {
+        const name =
+          prompt("Project name:");
 
-    const english =
-        voices.filter(
-            voice =>
-                voice.lang &&
-                voice.lang
-                    .toLowerCase()
-                    .startsWith("en")
+        if (!name?.trim()) return;
+
+        addActivity(`Project requested: ${name}`);
+
+        alert(
+          "Project creation is ready for the database layer. We will connect this to permanent projects next."
         );
+      });
 
-    const maleKeywords = [
-        "male",
-        "david",
-        "mark",
-        "daniel",
-        "george",
-        "james",
-        "guy",
-        "ryan",
-        "alex"
-    ];
+    /* =========================
+       VOICE
+    ========================= */
 
-    return (
-        english.find(
-            voice => {
-
-                const name =
-                    voice.name.toLowerCase();
-
-                return maleKeywords.some(
-                    keyword =>
-                        name.includes(
-                            keyword
-                        )
-                );
-            }
-        ) ||
-        english[0] ||
-        voices[0]
-    );
-}
-
-
-function loadVoice() {
-
-    selectedVoice =
-        findMaleVoice();
-}
-
-
-if (
-    "speechSynthesis" in window
-) {
-    speechSynthesis.onvoiceschanged =
-        loadVoice;
-
-    loadVoice();
-}
-
-
-function speak(text) {
-
-    if (
-        !("speechSynthesis" in window)
-    ) {
-        return;
-    }
-
-    speechSynthesis.cancel();
-
-    const utterance =
-        new SpeechSynthesisUtterance(
-            text
-        );
-
-    selectedVoice =
-        findMaleVoice();
-
-    if (selectedVoice) {
-        utterance.voice =
-            selectedVoice;
-    }
-
-    utterance.lang =
-        "en-GB";
-
-    utterance.rate =
-        0.95;
-
-    utterance.pitch =
-        0.85;
-
-    utterance.volume =
-        1;
-
-    speechSynthesis.speak(
-        utterance
-    );
-}
-
-
-/* =========================================================
-   VOICE RECOGNITION
-   ========================================================= */
-
-function setupVoiceRecognition() {
-
-    const SpeechRecognition =
+    function setupVoice() {
+      const SpeechRecognition =
         window.SpeechRecognition ||
         window.webkitSpeechRecognition;
 
-    if (!SpeechRecognition) {
-
-        updateVoiceStatus(
-            "Not supported"
-        );
-
+      if (!SpeechRecognition) {
+        document.getElementById("systemVoice").textContent =
+          "UNSUPPORTED";
         return;
-    }
+      }
 
-    recognition =
-        new SpeechRecognition();
+      recognition = new SpeechRecognition();
 
-    recognition.continuous =
-        true;
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = "en-GB";
+      recognition.maxAlternatives = 3;
 
-    recognition.interimResults =
-        true;
+      recognition.onresult = event => {
+        const result =
+          event.results[event.results.length - 1];
 
-    recognition.lang =
-        "en-GB";
+        const transcript =
+          result[0].transcript.trim();
 
-    recognition.maxAlternatives =
-        3;
-
-
-    recognition.onstart =
-        () => {
-
-            voiceActive = true;
-
-            updateVoiceStatus(
-                "Listening"
-            );
-        };
-
-
-    recognition.onerror =
-        event => {
-
-            console.warn(
-                "Voice error:",
-                event.error
-            );
-
-            if (
-                event.error ===
-                "not-allowed"
-            ) {
-
-                voiceActive =
-                    false;
-
-                updateVoiceStatus(
-                    "Microphone blocked"
-                );
-
-                return;
-            }
-
-            updateVoiceStatus(
-                "Reconnecting..."
-            );
-        };
-
-
-    recognition.onend =
-        () => {
-
-            if (!voiceActive) {
-
-                updateVoiceStatus(
-                    "Off"
-                );
-
-                return;
-            }
-
-            setTimeout(
-                () => {
-
-                    if (!voiceActive) {
-                        return;
-                    }
-
-                    try {
-                        recognition.start();
-                    } catch (_) {}
-
-                },
-                300
-            );
-        };
-
-
-    recognition.onresult =
-        event => {
-
-            let transcript =
-                "";
-
-            for (
-                let i =
-                    event.resultIndex;
-                i <
-                    event.results.length;
-                i++
-            ) {
-
-                transcript +=
-                    event.results[i][0]
-                        .transcript +
-                    " ";
-            }
-
-            transcript =
-                transcript.trim();
-
-            if (!transcript) {
-                return;
-            }
-
-            processVoiceTranscript(
-                transcript
-            );
-        };
-}
-
-
-function processVoiceTranscript(
-    transcript
-) {
-
-    const normalised =
-        transcript
-            .toLowerCase()
-            .replace(
-                /[.,!?]/g,
-                ""
-            )
-            .trim();
-
-
-    /*
-       Direct commands:
-       "MAX open files"
-       "Hey MAX open files"
-    */
-
-    const directCommand =
-        normalised.match(
-            /^(?:hey\s+|okay\s+|ok\s+|yo\s+|hello\s+)?max\s+(.+)$/
-        );
-
-
-    if (directCommand) {
+        if (!transcript) return;
 
         const command =
-            directCommand[1].trim();
+          extractMAXCommand(transcript);
 
         if (command) {
-
-            listeningForCommand =
-                false;
-
-            sendCommand(
-                command,
-                true
-            );
+          clearTimeout(voiceCommandTimeout);
+          sendToMAX(command);
+          return;
         }
 
-        return;
+        if (
+          isWakeWord(transcript) &&
+          !result.isFinal
+        ) {
+          return;
+        }
+
+        if (
+          isWakeWord(transcript) &&
+          result.isFinal
+        ) {
+          speak("Yes, Sir.");
+
+          clearTimeout(voiceCommandTimeout);
+
+          voiceCommandTimeout = setTimeout(() => {
+            // Waiting for the next spoken command.
+          }, 8000);
+        }
+      };
+
+      recognition.onend = () => {
+        if (voiceActive) {
+          try {
+            recognition.start();
+          } catch {}
+        }
+      };
+
+      recognition.onerror = event => {
+        console.log("Voice:", event.error);
+      };
     }
 
+    function isWakeWord(text) {
+      const cleaned =
+        text.toLowerCase().trim();
 
-    /*
-       Wake words:
-       "MAX"
-       "Hey MAX"
-       "Okay MAX"
-    */
-
-    const wakeWords = [
+      return [
         "max",
         "hey max",
         "okay max",
         "ok max",
         "yo max",
         "hello max"
-    ];
-
-
-    if (
-        !listeningForCommand &&
-        wakeWords.includes(
-            normalised
-        )
-    ) {
-
-        listeningForCommand =
-            true;
-
-        speak(
-            "Yes, Sir."
-        );
-
-        updateVoiceStatus(
-            "Waiting for command"
-        );
-
-        setTimeout(
-            () => {
-
-                listeningForCommand =
-                    false;
-
-                if (voiceActive) {
-
-                    updateVoiceStatus(
-                        "Listening"
-                    );
-                }
-
-            },
-            8000
-        );
-
-        return;
+      ].includes(cleaned);
     }
 
-
-    /*
-       If MAX has just been woken,
-       the next sentence becomes
-       the command.
-    */
-
-    if (listeningForCommand) {
-
-        listeningForCommand =
-            false;
-
-        sendCommand(
-            transcript,
-            true
+    function extractMAXCommand(text) {
+      const match =
+        text.match(
+          /^(?:hey|okay|ok|yo|hello)?\s*max(?:\s+|,)\s*(.+)$/i
         );
 
-        if (voiceActive) {
-
-            updateVoiceStatus(
-                "Listening"
-            );
-        }
-    }
-}
-
-
-function startVoiceSystem() {
-
-    if (!recognition) {
-        setupVoiceRecognition();
+      return match?.[1]?.trim() || null;
     }
 
-    if (!recognition) {
-        return;
-    }
+    function toggleVoice() {
+      if (!recognition) {
+        setupVoice();
+      }
 
-    voiceActive =
-        true;
+      if (!recognition) return;
 
-    try {
-        recognition.start();
-    } catch (_) {}
-
-    updateVoiceStatus(
-        "Listening"
-    );
-
-    speak(
-        "Voice control online, Sir."
-    );
-
-    addActivity(
-        "MAX voice control activated"
-    );
-}
-
-
-function stopVoiceSystem() {
-
-    voiceActive =
-        false;
-
-    listeningForCommand =
-        false;
-
-    if (recognition) {
+      if (voiceActive) {
+        voiceActive = false;
 
         try {
-            recognition.stop();
-        } catch (_) {}
+          recognition.stop();
+        } catch {}
+
+        document.getElementById("systemVoice").textContent =
+          "OFF";
+
+        addActivity("MAX voice disabled");
+
+      } else {
+        voiceActive = true;
+
+        try {
+          recognition.start();
+        } catch {}
+
+        document.getElementById("systemVoice").textContent =
+          "ACTIVE";
+
+        addActivity("MAX voice enabled");
+
+        speak("Voice system online, Sir.");
+      }
     }
 
-    updateVoiceStatus(
-        "Off"
-    );
+    /* =========================
+       TTS
+    ========================= */
 
-    addActivity(
-        "MAX voice control deactivated"
-    );
-}
+    function speak(text) {
+      if (!("speechSynthesis" in window)) return;
 
+      speechSynthesis.cancel();
 
-function toggleVoiceSystem() {
+      const utterance =
+        new SpeechSynthesisUtterance(text);
 
-    if (voiceActive) {
-        stopVoiceSystem();
-    } else {
-        startVoiceSystem();
-    }
-}
+      utterance.lang = "en-GB";
+      utterance.rate = 0.95;
+      utterance.pitch = 0.85;
+      utterance.volume = 1;
 
+      const voices =
+        speechSynthesis.getVoices();
 
-function updateVoiceStatus(
-    status
-) {
+      const preferred =
+        voices.find(voice => {
+          const name =
+            voice.name.toLowerCase();
 
-    document.getElementById(
-        "voiceStatus"
-    ).textContent =
-        status;
+          return (
+            voice.lang.startsWith("en") &&
+            (
+              name.includes("male") ||
+              name.includes("david") ||
+              name.includes("mark") ||
+              name.includes("daniel") ||
+              name.includes("george") ||
+              name.includes("james") ||
+              name.includes("guy") ||
+              name.includes("ryan") ||
+              name.includes("alex")
+            )
+          );
+        });
 
-    document.getElementById(
-        "overviewVoice"
-    ).textContent =
-        voiceActive
-            ? "Listening"
-            : "Off";
-
-    document.getElementById(
-        "maxVoiceSide"
-    ).textContent =
-        voiceActive
-            ? "Listening"
-            : "Off";
-}
-
-
-/* =========================================================
-   KEYBOARD SHORTCUTS
-   ========================================================= */
-
-document.addEventListener(
-    "keydown",
-    event => {
-
-        /*
-           Ctrl + Space
-           Toggle MAX voice.
-        */
-
-        if (
-            event.ctrlKey &&
-            event.code === "Space"
-        ) {
-
-            event.preventDefault();
-
-            toggleVoiceSystem();
-
-            return;
-        }
-
-
-        /*
-           Ctrl + Shift + M
-           Open MAX.
-        */
-
-        if (
-            event.ctrlKey &&
-            event.shiftKey &&
-            event.key.toLowerCase() === "m"
-        ) {
-
-            event.preventDefault();
-
-            openSection(
-                "max"
-            );
-
-            document.getElementById(
-                "maxInput"
-            ).focus();
-        }
-    }
-);
-
-
-/* =========================================================
-   TOOLS
-   ========================================================= */
-
-document
-    .getElementById(
-        "toolFiles"
-    )
-    .addEventListener(
-        "click",
-        () => openSection("files")
-    );
-
-
-document
-    .getElementById(
-        "toolMAX"
-    )
-    .addEventListener(
-        "click",
-        () => openSection("max")
-    );
-
-
-document
-    .getElementById(
-        "toolVoice"
-    )
-    .addEventListener(
-        "click",
-        toggleVoiceSystem
-    );
-
-
-/* =========================================================
-   API HEALTH
-   ========================================================= */
-
-async function checkAPI() {
-
-    const element =
-        document.getElementById(
-            "apiStatus"
+      const english =
+        voices.find(voice =>
+          voice.lang.startsWith("en")
         );
 
-    try {
+      utterance.voice =
+        preferred ||
+        english ||
+        voices[0] ||
+        null;
 
-        const response =
-            await fetch(
-                "/api/health"
-            );
-
-        if (response.ok) {
-
-            element.textContent =
-                "Online";
-
-        } else {
-
-            element.textContent =
-                "Error";
-        }
-
-    } catch (_) {
-
-        element.textContent =
-            "Offline";
+      speechSynthesis.speak(utterance);
     }
-}
 
-
-/* =========================================================
-   WAYPOINT INITIALISATION
-   ========================================================= */
-
-function initialiseWaypoint() {
-
-    addActivity(
-        "Waypoint session started"
+    speechSynthesis?.addEventListener?.(
+      "voiceschanged",
+      () => {}
     );
 
-    checkAPI();
+    /* =========================
+       KEYBOARD CONTROLS
+    ========================= */
 
-    setupVoiceRecognition();
+    document.addEventListener("keydown", event => {
+      if (
+        event.ctrlKey &&
+        event.code === "Space"
+      ) {
+        event.preventDefault();
+        toggleVoice();
+      }
 
-    openSection(
-        "overview"
-    );
-}
+      if (
+        event.ctrlKey &&
+        event.shiftKey &&
+        event.code === "KeyM"
+      ) {
+        event.preventDefault();
 
+        openSection("max");
 
-/* =========================================================
-   START
-   ========================================================= */
+        document
+          .getElementById("maxInput")
+          ?.focus();
+      }
+    });
 
-checkSession();
+    /* =========================
+       INITIALISE
+    ========================= */
 
-</script>
+    function initialiseWaypoint() {
+      updateClock();
+      setInterval(updateClock, 1000);
+
+      setupVoice();
+      checkAPI();
+
+      addActivity("Waypoint session started");
+
+      openSection("overview");
+    }
+
+    // Session check happens BEFORE login/app is shown.
+    // This is what prevents the login screen flashing.
+    checkSession();
+
+    /* =========================
+       PWA
+    ========================= */
+
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker
+          .register("/sw.js")
+          .catch(error => {
+            console.error(
+              "Service worker registration failed:",
+              error
+            );
+          });
+      });
+    }
+  </script>
 
 </body>
 </html>
