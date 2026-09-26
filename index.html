@@ -1714,7 +1714,7 @@ function setupMAX() {
   also handles that so Waypoint doesn't break during updates.
 */
 
-async async function sendToMAX(message) {
+async function sendToMAX(message) {
   const normalizedMessage = message.toLowerCase().trim();
 
   if (
@@ -1923,7 +1923,7 @@ async async function sendToMAX(message) {
 let maxAudio = null;
 let maxAudioUrl = null;
 
-async async function speakMAX(text) {
+async function speakMAX(text) {
   const spokenText = String(text || "").trim();
   if (!spokenText) return;
 
