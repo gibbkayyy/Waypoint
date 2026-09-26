@@ -2471,28 +2471,6 @@ function toggleVoice() {
   }
 }
 
-function pauseVoiceForMAX() {
-  state.voiceSuppressed = true;
-  closeLiveVoice();
-
-  if (state.voiceActive) {
-    $("voiceStatusCard").textContent = "MAX responding";
-    $("sysRecognition").textContent = "Paused for MAX";
-    setMaxState("speaking", "MAX speaking");
-    setMAXStatus("MAX is responding, Sir.");
-  }
-}
-
-function resumeVoiceAfterMAX() {
-  state.voiceSuppressed = false;
-
-  if (!state.voiceActive || state.processingMAX || state.speaking) {
-    return;
-  }
-
-  startVoice();
-}
-
 /* =========================================================
    VOICE COMMAND PARSER
 ========================================================= */
