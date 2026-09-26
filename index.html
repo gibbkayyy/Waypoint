@@ -1871,7 +1871,7 @@ async function sendToMAX(message) {
 
       state.lastMAXText = fullText;
 
-      speakMAX(fullText);
+      await speakMAX(fullText);
 
       logActivity(
         "MAX",
@@ -1891,7 +1891,7 @@ async function sendToMAX(message) {
       displayMAX(data.reply);
       state.lastMAXText = data.reply;
 
-      speakMAX(data.reply);
+      await speakMAX(data.reply);
     }
 
   } catch (error) {
