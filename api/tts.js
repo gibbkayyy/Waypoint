@@ -1,8 +1,7 @@
 import { Buffer } from "node:buffer";
 
-// Lite is optimized for low-latency conversational speech while keeping
-// the same Gemini 3.8 TTS API and voice configuration.
-const MODEL = "gemini-3.8-flash-lite-tts";
+// Keep the high-fidelity Kore voice the user selected.
+const MODEL = "gemini-3.8-flash-tts";
 const VOICE = "Kore";
 
 export default async function handler(req, res) {
