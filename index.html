@@ -2024,11 +2024,13 @@ function setupVoice() {
   };
 
   recognition.onresult = event => {
-    // Ignore anything captured while MAX is processing/speaking.
+    // Voice behaves like a microphone typing into the MAX command box.
+    // Interim words are shown live; the completed sentence is sent once.
     if (state.voiceSuppressed || state.processingMAX || state.speaking) {
       return;
     }
 
+    let interimText = "";
     let finalText = "";
 
     for (
@@ -2039,13 +2041,31 @@ function setupVoice() {
       const transcript =
         event.results[i][0].transcript.trim();
 
+      if (!transcript) continue;
+
       if (event.results[i].isFinal) {
         finalText += transcript + " ";
+      } else {
+        interimText += transcript + " ";
       }
     }
 
+    const liveText = finalText.trim() || interimText.trim();
+
+    if (liveText) {
+      maxInput.value = liveText;
+      maxInput.focus();
+      setMAXStatus(
+        finalText.trim()
+          ? "Sending your command, Sir."
+          : "Listening to your command, Sir."
+      );
+    }
+
     if (finalText.trim()) {
-      handleVoiceCommand(finalText.trim());
+      const command = finalText.trim();
+      maxInput.value = command;
+      handleVoiceCommand(command);
     }
   };
 
