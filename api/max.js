@@ -1,3 +1,5 @@
+import sql, { ensureSchema } from "./db.js";
+
 const MODELS = [
   "gemini-3.8-flash",
   "gemini-3.7-flash",
@@ -98,6 +100,8 @@ export default async function handler(req, res) {
   }
 
   try {
+    await ensureSchema();
+
     const apiKey = process.env.GEMINI_API_KEY;
 
     if (!apiKey) {
@@ -113,6 +117,11 @@ export default async function handler(req, res) {
         error: "No message provided."
       });
     }
+
+    await sql`
+      INSERT INTO max_messages (role, message)
+      VALUES ('user', ${message.trim()})
+    `;
 
     let lastError = null;
 
@@ -138,6 +147,11 @@ export default async function handler(req, res) {
             if (!reply) {
               throw new Error("Gemini returned an empty response.");
             }
+
+            await sql`
+              INSERT INTO max_messages (role, message)
+              VALUES ('assistant', ${reply})
+            `;
 
             return res.status(200).json({
               success: true,
