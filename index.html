@@ -3160,6 +3160,31 @@ function arrayBufferToBase64(buffer) {
   return btoa(binary);
 }
 
+function downsampleTo16k(input, inputSampleRate) {
+  if (inputSampleRate === 16000) return input;
+
+  const ratio = inputSampleRate / 16000;
+  const outputLength = Math.round(input.length / ratio);
+  const output = new Float32Array(outputLength);
+
+  let inputOffset = 0;
+
+  for (let i = 0; i < outputLength; i++) {
+    const nextOffset = Math.round((i + 1) * ratio);
+    let count = 0;
+    let sum = 0;
+
+    for (; inputOffset < nextOffset && inputOffset < input.length; inputOffset++) {
+      sum += input[inputOffset];
+      count++;
+    }
+
+    output[i] = count ? sum / count : 0;
+  }
+
+  return output;
+}
+
 function setVoiceInput(text) {
   state.voiceProgrammaticInput = true;
   maxInput.value = text;
@@ -3350,7 +3375,11 @@ async function setupLiveVoice() {
     }
 
     const input = event.inputBuffer.getChannelData(0);
-    const pcm = floatTo16BitPCM(input);
+    const pcmInput = downsampleTo16k(
+      input,
+      liveVoice.audioContext.sampleRate
+    );
+    const pcm = floatTo16BitPCM(pcmInput);
 
     liveVoice.socket.send(JSON.stringify({
       realtimeInput: {
@@ -3363,7 +3392,13 @@ async function setupLiveVoice() {
   };
 
   liveVoice.source.connect(liveVoice.processor);
-  liveVoice.processor.connect(liveVoice.audioContext.destination);
+
+  // Keep the ScriptProcessor alive without routing microphone audio
+  // back through the speakers.
+  const silentOutput = liveVoice.audioContext.createGain();
+  silentOutput.gain.value = 0;
+  liveVoice.processor.connect(silentOutput);
+  silentOutput.connect(liveVoice.audioContext.destination);
 
   liveVoice.active = true;
   state.recognitionSupported = true;
