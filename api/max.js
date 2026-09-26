@@ -35,6 +35,7 @@ If a requested Waypoint action is not currently connected to a tool, clearly say
 
 Keep responses natural and useful.
 `;
+}
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
