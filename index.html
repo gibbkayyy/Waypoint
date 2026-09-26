@@ -2007,8 +2007,14 @@ function setupVoice() {
 
   recognition.onstart = () => {
     state.voiceActive = true;
-    state.voiceBaseText = maxInput.value.trim();
-    state.voiceCommittedText = state.voiceBaseText;
+
+    // Do not reset the transcript when the browser reconnects the
+    // recognition service. Only initialize it for a genuinely new
+    // listening session.
+    if (!state.voiceCommittedText.trim() && maxInput.value.trim()) {
+      state.voiceBaseText = maxInput.value.trim();
+      state.voiceCommittedText = state.voiceBaseText;
+    }
 
     voiceButton.classList.add("active");
     $("voiceStatusCard").textContent = "Listening";
@@ -2082,7 +2088,7 @@ function setupVoice() {
         maxInput.value = "";
 
         sendToMAX(message);
-      }, interimText ? 1800 : (changedFinal ? 1600 : 1800));
+      }, interimText ? 2400 : (changedFinal ? 2200 : 2400));
     }
   };
   recognition.onerror = event => {
@@ -2154,6 +2160,9 @@ function startVoice() {
   }
 
   state.voiceActive = true;
+  clearTimeout(state.voiceSendTimer);
+  state.voiceBaseText = maxInput.value.trim();
+  state.voiceCommittedText = state.voiceBaseText;
 
   try {
     state.recognition.start();
@@ -2163,6 +2172,10 @@ function startVoice() {
 function stopVoice() {
   state.voiceActive = false;
   state.voiceSuppressed = false;
+  clearTimeout(state.voiceSendTimer);
+  state.voiceSendTimer = null;
+  state.voiceBaseText = maxInput.value.trim();
+  state.voiceCommittedText = state.voiceBaseText;
 
   voiceButton.classList.remove("active");
 
