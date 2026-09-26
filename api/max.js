@@ -40,7 +40,7 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function callGemini(model, apiKey, message) {
+async function callGemini(model, apiKey, message, currentDateTime) {
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`,
     {
@@ -134,7 +134,8 @@ export default async function handler(req, res) {
           const { response, data } = await callGemini(
             model,
             apiKey,
-            message
+            message,
+            currentDateTime
           );
 
           if (response.ok) {
