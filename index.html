@@ -1411,9 +1411,14 @@ async function bootWaypoint() {
     const data = await response.json();
 
     if (data.authenticated) {
-      bootStatus.textContent = "Loading Waypoint...";
-      await initialiseSystem();
+      // Authentication is the only thing that blocks the UI.
+      // The rest of Waypoint can initialize in the background.
+      bootStatus.textContent = "Starting Waypoint...";
       enterApp();
+      initialiseSystem().catch(error => {
+        console.error("WAYPOINT INIT:", error);
+        setMAXStatus("Some background systems are still loading, Sir.");
+      });
     } else {
       bootStatus.textContent = "Ready.";
       showLogin();
