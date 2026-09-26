@@ -1,7 +1,4 @@
 {
-  "dependencies": {
-    "@google/genai": "^2.24.0"
-  },
   "engines": {
     "node": "20.x"
   }
