@@ -1,62 +1,52 @@
 import { GoogleGenAI } from "@google/genai";
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({
-      error: "Method not allowed"
-    });
-  }
-
   try {
+    if (req.method !== "POST") {
+      return res.status(405).json({
+        error: "Method not allowed"
+      });
+    }
+
+    // Check API key exists
     if (!process.env.GEMINI_API_KEY) {
       return res.status(500).json({
-        error: "GEMINI_API_KEY is missing from Vercel environment variables."
+        error: "GEMINI_API_KEY is missing."
       });
     }
 
+    // Check request body
     const { message } = req.body || {};
 
-    if (!message || typeof message !== "string") {
+    if (!message) {
       return res.status(400).json({
-        error: "No message provided."
+        error: "No message received."
       });
     }
 
+    // Connect to Gemini
     const ai = new GoogleGenAI({
       apiKey: process.env.GEMINI_API_KEY
     });
 
+    // Test Gemini
     const response = await ai.models.generateContent({
       model: "gemini-3.8-flash",
-      contents: message,
-      config: {
-        systemInstruction: `
-You are MAX, the personal intelligence of Waypoint.
-
-You were made by Kai Gibb to help him with whatever he needs.
-
-Always address the user as "Sir".
-
-You are calm, intelligent, professional and concise.
-
-Waypoint is your system.
-You are not just a chatbot.
-You are the natural-language control layer for Waypoint.
-
-Do not pretend to perform actions that you cannot actually perform.
-`
-      }
+      contents: message
     });
 
     return res.status(200).json({
-      reply: response.text || "I wasn't able to generate a response, Sir."
+      success: true,
+      reply: response.text || "Gemini returned no text."
     });
 
   } catch (error) {
-    console.error("MAX API ERROR:", error);
+    console.error("MAX ERROR:", error);
 
     return res.status(500).json({
-      error: error?.message || String(error)
+      success: false,
+      error: error?.message || "Unknown error",
+      name: error?.name || "UnknownError"
     });
   }
 }
