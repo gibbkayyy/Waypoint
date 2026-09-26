@@ -1,0 +1,10 @@
+{
+  "name": "Waypoint",
+  "short_name": "Waypoint",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#05070c",
+  "theme_color": "#05070c",
+  "description": "Waypoint — personal digital command center",
+  "icons": []
+}
