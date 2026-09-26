@@ -354,16 +354,7 @@
     .icon-button:hover {
       color: white;
       border-color: rgba(78,150,255,.4);
-    }
-
-    .voice-button.active {
-      color: white;
-      border-color: rgba(56,224,140,.35);
-      background: rgba(56,224,140,.08);
-      box-shadow: 0 0 18px rgba(56,224,140,.08);
-    }
-
-    /* CONTENT */
+    }/* CONTENT */
 
     .content {
       flex: 1;
@@ -1025,16 +1016,7 @@
             </div>
           </div>
 
-          <div class="top-actions">
-            <button
-              class="icon-button voice-button"
-              id="voiceButton"
-              title="Toggle MAX voice"
-            >
-              🎙
-            </button>
-
-            <button
+          <div class="top-actions"><button
               class="icon-button"
               id="maxOpenButton"
               title="Open MAX"
@@ -1081,14 +1063,6 @@
                 <div class="card-value" id="systemStatus">Checking...</div>
                 <div class="card-small" id="systemStatusDetail">
                   Connecting to Waypoint backend
-                </div>
-              </div>
-
-              <div class="card wide">
-                <div class="card-label">Voice control</div>
-                <div class="card-value" id="voiceStatusCard">Starting...</div>
-                <div class="card-small">
-                  MAX voice stays active while this page is running.
                 </div>
               </div>
             </div>
@@ -1248,31 +1222,7 @@
               </div>
 
               <div class="card">
-                <div class="card-label">Voice</div>
-
-                <div class="system-row">
-                  <span>Recognition</span>
-                  <span id="sysRecognition">--</span>
-                </div>
-
-                <div class="system-row">
-                  <span>Speech</span>
-                  <span id="sysSpeech">--</span>
-                </div>
-
-                <div class="system-row">
-                  <span>Wake words</span>
-                  <span>MAX enabled</span>
-                </div>
-              </div>
-
-              <div class="card">
                 <div class="card-label">Shortcuts</div>
-
-                <div class="system-row">
-                  <span>Voice</span>
-                  <span>Ctrl + Space</span>
-                </div>
 
                 <div class="system-row">
                   <span>MAX</span>
@@ -1506,7 +1456,6 @@ async function initialiseSystem() {
   setupQuickAccess();
   setupQuickWidgets();
 setupMAX();
-  setupVoice();
   setupShortcuts();
   setupFiles();
   setupProjects();
@@ -1525,8 +1474,6 @@ setupMAX();
     loadActivity()
   ]).catch(console.error);
 
-  // Do not open the microphone during boot. Voice starts only from
-  // the voice button or Ctrl + Space, after the UI has painted.
   setMaxState("ready", "Ready");
   setMAXStatus("Ready, Sir.");
 }
@@ -1691,7 +1638,6 @@ function setupMAX() {
     if (!message) return;
 
     maxInput.value = "";
-    state.voiceUserEdited = false;
     sendToMAX(message);
   });
 
@@ -1709,7 +1655,6 @@ function setupMAX() {
       if (!message) return;
 
       maxInput.value = "";
-      state.voiceUserEdited = false;
       sendToMAX(message);
     }
   });
@@ -1763,10 +1708,6 @@ async function sendToMAX(message) {
   if (state.processingMAX) return;
 
   state.processingMAX = true;
-
-  // Stop the microphone while MAX is processing/speaking.
-  // Keep voiceActive true so listening automatically resumes afterward.
-  pauseVoiceForMAX();
 
   setMaxState("thinking", "Thinking");
   setMAXStatus("Thinking, Sir.");
@@ -1925,13 +1866,7 @@ async function sendToMAX(message) {
     setMAXStatus("MAX connection error, Sir.");
 
   } finally {
-    state.processingMAX = false;
-
-    // If speech synthesis is unavailable, there will be no
-    // onend event to resume the microphone.
-    if (!state.speaking && state.voiceActive) {
-      resumeVoiceAfterMAX();
-    } else if (!state.speaking) {
+    state.processingMAX = false;  if (!state.speaking) {
       setMaxState("ready", "Ready");
       setMAXStatus("Ready, Sir.");
     }
@@ -2071,463 +2006,6 @@ async function speakMAX(text) {
     }
 
     maxAudio = null;
-  }
-}
-
-/* =========================================================
-   LIVE VOICE LIFECYCLE
-========================================================= */
-
-function pauseVoiceForMAX() {
-  state.voiceSuppressed = true;
-  closeLiveVoice();
-
-  if (state.voiceActive) {
-    $("voiceStatusCard").textContent = "MAX responding";
-    $("sysRecognition").textContent = "Paused for MAX";
-    setMaxState("speaking", "MAX speaking");
-    setMAXStatus("MAX is responding, Sir.");
-  }
-}
-
-function resumeVoiceAfterMAX() {
-  state.voiceSuppressed = false;
-
-  if (!state.voiceActive || state.processingMAX || state.speaking) {
-    return;
-  }
-
-  startVoice();
-}
-
-function normalizeVoiceText(text) {
-  return String(text || "")
-    .toLowerCase()
-    .replace(/[^a-z0-9' ]+/g, " ")
-    .replace(/\\s+/g, " ")
-    .trim();
-}
-
-/*
-  LIVE VOICE
-  ----------
-  No browser SpeechRecognition.
-  Waypoint captures microphone PCM itself and streams it to Gemini Live
-  Transcribe over WebSocket. The browser only handles audio capture/playback;
-  recognition happens in Google's realtime model.
-*/
-
-let liveVoice = {
-  socket: null,
-  stream: null,
-  audioContext: null,
-  processor: null,
-  source: null,
-  active: false,
-  finalText: "",
-  interimText: "",
-  stopping: false
-};
-
-function floatTo16BitPCM(float32) {
-  const buffer = new ArrayBuffer(float32.length * 2);
-  const view = new DataView(buffer);
-
-  for (let i = 0; i < float32.length; i++) {
-    const sample = Math.max(-1, Math.min(1, float32[i]));
-    view.setInt16(
-      i * 2,
-      sample < 0 ? sample * 0x8000 : sample * 0x7fff,
-      true
-    );
-  }
-
-  return new Uint8Array(buffer);
-}
-
-function arrayBufferToBase64(buffer) {
-  let binary = "";
-  const bytes = new Uint8Array(buffer);
-
-  const chunkSize = 0x8000;
-  for (let i = 0; i < bytes.length; i += chunkSize) {
-    binary += String.fromCharCode(
-      ...bytes.subarray(i, Math.min(i + chunkSize, bytes.length))
-    );
-  }
-
-  return btoa(binary);
-}
-
-function downsampleTo16k(input, inputSampleRate) {
-  if (inputSampleRate === 16000) return input;
-
-  const ratio = inputSampleRate / 16000;
-  const outputLength = Math.round(input.length / ratio);
-  const output = new Float32Array(outputLength);
-
-  let inputOffset = 0;
-
-  for (let i = 0; i < outputLength; i++) {
-    const nextOffset = Math.round((i + 1) * ratio);
-    let count = 0;
-    let sum = 0;
-
-    for (; inputOffset < nextOffset && inputOffset < input.length; inputOffset++) {
-      sum += input[inputOffset];
-      count++;
-    }
-
-    output[i] = count ? sum / count : 0;
-  }
-
-  return output;
-}
-
-function setVoiceInput(text) {
-  state.voiceProgrammaticInput = true;
-  maxInput.value = text;
-  state.voiceLastRenderedText = text;
-  state.voiceProgrammaticInput = false;
-}
-
-async function getLiveVoiceToken() {
-  const response = await fetch("/api/live-token", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    cache: "no-store"
-  });
-
-  const data = await response.json().catch(() => ({}));
-
-  if (!response.ok || !data.token) {
-    throw new Error(
-      data.error ||
-      `Live voice token request failed (HTTP ${response.status}).`
-    );
-  }
-
-  return data.token;
-}
-
-function closeLiveVoice() {
-  liveVoice.stopping = true;
-  liveVoice.active = false;
-
-  try {
-    liveVoice.processor?.disconnect();
-  } catch {}
-
-  try {
-    liveVoice.source?.disconnect();
-  } catch {}
-
-  try {
-    liveVoice.audioContext?.close();
-  } catch {}
-
-  try {
-    liveVoice.stream?.getTracks().forEach(track => track.stop());
-  } catch {}
-
-  try {
-    liveVoice.socket?.close();
-  } catch {}
-
-  liveVoice.socket = null;
-  liveVoice.processor = null;
-  liveVoice.source = null;
-  liveVoice.audioContext = null;
-  liveVoice.stream = null;
-}
-
-async function setupLiveVoice() {
-  if (!navigator.mediaDevices?.getUserMedia) {
-    throw new Error("Microphone capture is unavailable in this browser.");
-  }
-
-  const token = await getLiveVoiceToken();
-
-  const socket = new WebSocket(
-    "wss://generativelanguage.googleapis.com/ws/" +
-    "google.ai.generativelanguage.v1beta.GenerativeService." +
-    "BidiGenerateContentConstrained?access_token=" +
-    encodeURIComponent(token)
-  );
-
-  liveVoice.socket = socket;
-  liveVoice.stopping = false;
-
-  let socketOpened = false;
-
-  await new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => {
-      try { socket.close(); } catch {}
-      reject(new Error("Live voice connection timed out."));
-    }, 10000);
-
-    socket.onopen = () => {
-      clearTimeout(timeout);
-      socketOpened = true;
-      resolve();
-    };
-
-    socket.onerror = () => {
-      clearTimeout(timeout);
-      reject(new Error(
-        socketOpened
-          ? "Gemini Live reported a WebSocket error."
-          : "Gemini Live rejected the WebSocket connection."
-      ));
-    };
-
-    socket.onclose = event => {
-      if (!socketOpened) {
-        clearTimeout(timeout);
-        reject(new Error(
-          event.reason
-            ? `Gemini Live closed the connection: ${event.reason}`
-            : `Gemini Live closed the connection (code ${event.code}).`
-        ));
-      }
-    };
-  });
-
-  socket.onmessage = event =>
-    try {
-      const response = JSON.parse(event.data);
-
-      if (response.setupComplete) {
-        setMAXStatus("Live voice connected, Sir.");
-        return;
-      }
-
-      if (response.error) {
-        const message =
-          response.error.message ||
-          response.error.status ||
-          "Gemini Live returned an error.";
-        console.error("LIVE VOICE SERVER ERROR:", response.error);
-        setMAXStatus(message);
-        return;
-      }
-
-      const content = response.serverContent;
-
-      const interim = content?.interimInputTranscription?.text;
-      const final = content?.inputTranscription?.text;
-
-      if (interim) {
-        liveVoice.interimText = interim;
-
-        const visible = [
-          liveVoice.finalText,
-          liveVoice.interimText
-        ].filter(Boolean).join(" ").replace(/\\s+/g, " ").trim();
-
-        if (!state.voiceUserEdited) {
-          setVoiceInput(visible);
-        }
-      }
-
-      if (final) {
-        liveVoice.finalText +=
-          (liveVoice.finalText ? " " : "") + final.trim();
-
-        liveVoice.interimText = "";
-
-        if (!state.voiceUserEdited) {
-          setVoiceInput(liveVoice.finalText);
-        }
-      }
-
-      if (content?.turnComplete) {
-        const message = liveVoice.finalText.trim();
-
-        if (message) {
-          const normalized = normalizeVoiceText(message);
-          const now = Date.now();
-
-          if (
-            normalized !== state.lastVoiceSentNormalized ||
-            now - state.lastVoiceSentAt >= 5000
-          ) {
-            state.lastVoiceSentNormalized = normalized;
-            state.lastVoiceSentAt = now;
-
-            liveVoice.finalText = "";
-            liveVoice.interimText = "";
-            state.voiceUserEdited = false;
-            setVoiceInput("");
-
-            sendToMAX(message);
-          }
-        }
-      }
-    } catch (error) {
-      console.warn("LIVE VOICE MESSAGE:", error);
-    }
-  };
-
-  socket.onclose = () => {
-    if (!liveVoice.stopping && state.voiceActive) {
-      state.voiceActive = false;
-      voiceButton.classList.remove("active");
-      $("voiceStatusCard").textContent = "Disconnected";
-      $("sysRecognition").textContent = "Disconnected";
-      setMAXStatus("Live voice disconnected, Sir.");
-    }
-  };
-
-  socket.send(JSON.stringify({
-    setup: {
-      model: "models/gemini-3.5-transcribe-live",
-      generationConfig: {
-        responseModalities: ["TEXT"]
-      },
-      inputAudioTranscription: {
-        languageCodes: ["en-GB"]
-      }
-    }
-  }));
-
-  liveVoice.stream = await navigator.mediaDevices.getUserMedia({
-    audio: {
-      channelCount: 1,
-      echoCancellation: true,
-      noiseSuppression: true,
-      autoGainControl: true
-    }
-  });
-
-  liveVoice.audioContext = new AudioContext();
-  await liveVoice.audioContext.resume();
-
-  liveVoice.source =
-    liveVoice.audioContext.createMediaStreamSource(liveVoice.stream);
-
-  /*
-    ScriptProcessor is used deliberately here for broad Chromium/Android
-    compatibility. It only captures PCM; recognition itself is not browser
-    speech recognition.
-  */
-  liveVoice.processor =
-    liveVoice.audioContext.createScriptProcessor(2048, 1, 1);
-
-  liveVoice.processor.onaudioprocess = event => {
-    if (
-      liveVoice.stopping ||
-      !liveVoice.socket ||
-      liveVoice.socket.readyState !== WebSocket.OPEN
-    ) {
-      return;
-    }
-
-    const input = event.inputBuffer.getChannelData(0);
-    const pcmInput = downsampleTo16k(
-      input,
-      liveVoice.audioContext.sampleRate
-    );
-    const pcm = floatTo16BitPCM(pcmInput);
-
-    liveVoice.socket.send(JSON.stringify({
-      realtimeInput: {
-        audio: {
-          data: arrayBufferToBase64(pcm.buffer),
-          mimeType: "audio/pcm;rate=16000"
-        }
-      }
-    }));
-  };
-
-  liveVoice.source.connect(liveVoice.processor);
-
-  // Keep the ScriptProcessor alive without routing microphone audio
-  // back through the speakers.
-  const silentOutput = liveVoice.audioContext.createGain();
-  silentOutput.gain.value = 0;
-  liveVoice.processor.connect(silentOutput);
-  silentOutput.connect(liveVoice.audioContext.destination);
-
-  liveVoice.active = true;
-  state.recognitionSupported = true;
-}
-
-function setupVoice() {
-  state.recognitionSupported = !!navigator.mediaDevices?.getUserMedia;
-
-  if (!state.recognitionSupported) {
-    $("voiceStatusCard").textContent = "Unavailable";
-    $("sysRecognition").textContent = "Unavailable";
-    setMAXStatus("Microphone capture isn't supported by this browser.");
-  }
-}
-
-async function startVoice() {
-  if (!state.recognitionSupported || state.processingMAX || state.speaking) {
-    return;
-  }
-
-  if (liveVoice.active) return;
-
-  state.voiceActive = true;
-  state.voiceUserEdited = false;
-  liveVoice.finalText = "";
-  liveVoice.interimText = "";
-
-  voiceButton.classList.add("active");
-  $("voiceStatusCard").textContent = "Listening";
-  $("sysRecognition").textContent = "Live";
-  setMaxState("listening", "Listening");
-  setMAXStatus("Listening live, Sir.");
-
-  try {
-    await setupLiveVoice();
-  } catch (error) {
-    console.error("LIVE VOICE:", error);
-    state.voiceActive = false;
-    voiceButton.classList.remove("active");
-    closeLiveVoice();
-    $("voiceStatusCard").textContent = "Voice error";
-    $("sysRecognition").textContent = "Unavailable";
-    setMaxState("error", "Voice error");
-
-    const reason =
-      error?.name === "NotAllowedError"
-        ? "Microphone permission was denied, Sir."
-        : error?.name === "NotFoundError"
-          ? "No microphone was found, Sir."
-          : error?.message || "Unknown live voice error.";
-
-    setMAXStatus(`Live voice couldn't start: ${reason}`);
-  }
-}
-
-function stopVoice() {
-  state.voiceActive = false;
-  state.voiceUserEdited = false;
-  liveVoice.finalText = "";
-  liveVoice.interimText = "";
-
-  voiceButton.classList.remove("active");
-  closeLiveVoice();
-
-  $("voiceStatusCard").textContent = "Off";
-  $("sysRecognition").textContent = "Stopped";
-
-  if (!state.processingMAX && !state.speaking) {
-    setMaxState("ready", "Ready");
-    setMAXStatus("Voice paused, Sir.");
-  }
-}
-
-function toggleVoice() {
-  if (state.voiceActive) {
-    stopVoice();
-  } else {
-    startVoice();
   }
 }
 
